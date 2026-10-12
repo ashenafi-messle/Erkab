@@ -297,6 +297,107 @@ export async function seedPrograms() {
       );
     }
     console.log(`Successfully seeded ${PROGRAMS_DATA.length} training programs.`);
+
+    // Seed default donation campaigns
+    console.log('Seeding donation campaigns...');
+    const CAMPAIGNS = [
+      {
+        id: 'camp-1',
+        slug: 'scholarships',
+        title: 'Student Scholarships Fund',
+        description: 'Fund 12-week intensive bootcamps for disadvantaged youth in Gondar, covering 100% full tuition, lab access, and project supplies.',
+        goalAmountMinor: 25000000,
+        currency: 'ETB',
+        imageUrl: '/images/donations/scholarships.jpg',
+      },
+      {
+        id: 'camp-2',
+        slug: 'hardware-labs',
+        title: 'Computer Lab Hardware & Workstations',
+        description: 'Equip workstations with capable developer laptops, dual monitors, high-speed networking, and essential peripherals.',
+        goalAmountMinor: 50000000,
+        currency: 'ETB',
+        imageUrl: '/images/donations/hardware.jpg',
+      },
+      {
+        id: 'camp-3',
+        slug: 'solar-connectivity',
+        title: 'Solar Power Backup & Connectivity',
+        description: 'Ensure 24/7 learning uptime during local grid interruptions with dedicated solar battery backup and dedicated fiber internet.',
+        goalAmountMinor: 15000000,
+        currency: 'ETB',
+        imageUrl: '/images/donations/solar.jpg',
+      },
+    ];
+
+    for (const c of CAMPAIGNS) {
+      await pool.query(
+        `INSERT INTO "public"."DonationCampaign" (
+          "id", "slug", "title", "description", "goalAmountMinor", "currency", "imageUrl", "isPublished", "createdAt", "updatedAt"
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, true, NOW(), NOW())
+        ON CONFLICT ("id") DO UPDATE SET
+          "slug" = EXCLUDED."slug",
+          "title" = EXCLUDED."title",
+          "description" = EXCLUDED."description",
+          "goalAmountMinor" = EXCLUDED."goalAmountMinor",
+          "currency" = EXCLUDED."currency",
+          "imageUrl" = EXCLUDED."imageUrl",
+          "isPublished" = true,
+          "updatedAt" = NOW();`,
+        [c.id, c.slug, c.title, c.description, c.goalAmountMinor, c.currency, c.imageUrl]
+      );
+    }
+    console.log(`Successfully seeded ${CAMPAIGNS.length} donation campaigns.`);
+
+    // Seed published news articles
+    console.log('Seeding published news articles...');
+    const NEWS = [
+      {
+        id: 'news-1',
+        slug: 'scholarship-cohort-1-announcement',
+        title: 'Applications Open for Inaugural 12-Week Vocational Cohorts',
+        category: 'Admissions',
+        excerpt: 'Erkab Skills Training Organization announces the commencement of student scholarship applications across all 10 training tracks in Gondar.',
+        content: `Erkab Skills Training Organization is thrilled to open admissions for our inaugural scholarship cohort in Gondar, Ethiopia. 
+
+Aspiring learners can apply for 10 comprehensive, tuition-free vocational tracks ranging from Full-Stack Web Development, Mobile Development, and Artificial Intelligence, to Urban Agriculture and Small-Scale Manufacturing.
+
+All accepted scholarship students receive full tuition coverage, dedicated workstation access in our Gondar tech laboratory, and personalized mentorship from experienced industry practitioners.`,
+        coverImageUrl: '/images/news/cohort-1.jpg',
+        status: 'PUBLISHED',
+      },
+      {
+        id: 'news-2',
+        slug: 'gondar-tech-lab-expansion',
+        title: 'Erkab Expands Dedicated Hands-On Computer Laboratory in Gondar',
+        category: 'Campus',
+        excerpt: 'New developer workstations, solar backup power, and fiber connectivity installed to provide continuous technical learning.',
+        content: `To ensure uninterrupted learning regardless of local power fluctuations, Erkab has expanded its flagship training facility in Gondar with modern solar battery storage and high-speed dedicated connectivity.
+
+Each workstation is configured with modern development tooling, dual-monitor setups, and collaborative pair-programming stations designed to replicate professional software engineering environments.`,
+        coverImageUrl: '/images/news/lab-expansion.jpg',
+        status: 'PUBLISHED',
+      },
+    ];
+
+    for (const n of NEWS) {
+      await pool.query(
+        `INSERT INTO "public"."NewsArticle" (
+          "id", "slug", "title", "excerpt", "content", "category", "coverImageUrl", "status", "publishedAt", "authorName", "createdAt", "updatedAt"
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), 'Erkab Editorial Team', NOW(), NOW())
+        ON CONFLICT ("id") DO UPDATE SET
+          "slug" = EXCLUDED."slug",
+          "title" = EXCLUDED."title",
+          "excerpt" = EXCLUDED."excerpt",
+          "content" = EXCLUDED."content",
+          "category" = EXCLUDED."category",
+          "coverImageUrl" = EXCLUDED."coverImageUrl",
+          "status" = EXCLUDED."status",
+          "updatedAt" = NOW();`,
+        [n.id, n.slug, n.title, n.excerpt, n.content, n.category, n.coverImageUrl, n.status]
+      );
+    }
+    console.log(`Successfully seeded ${NEWS.length} news articles.`);
   } catch (err: any) {
     console.error('Seed error:', err.message);
     throw err;

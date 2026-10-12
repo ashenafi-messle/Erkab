@@ -9,7 +9,7 @@ export const createPartnershipSchema = z.object({
   country: z.string().trim().optional(),
   city: z.string().trim().optional(),
   partnershipType: z.string().trim().min(2, 'Partnership type is required'),
-  proposal: z.string().trim().min(5, 'Partnership proposal or collaboration message is required (at least 5 characters)'),
+  proposal: z.string().trim().optional(),
 });
 
 export const reviewPartnershipSchema = z.object({

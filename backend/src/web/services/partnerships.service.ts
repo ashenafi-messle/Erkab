@@ -14,7 +14,7 @@ export interface CreatePartnershipDTO {
   country?: string;
   city?: string;
   partnershipType: string;
-  proposal: string;
+  proposal?: string;
 }
 
 export class PartnershipsService {
@@ -60,7 +60,7 @@ export class PartnershipsService {
             data.country || null,
             data.city || null,
             data.partnershipType,
-            data.proposal,
+            data.proposal || null,
           ]
         );
 
@@ -92,6 +92,7 @@ export class PartnershipsService {
 
       return {
         success: true,
+        reference,
         referenceNumber: reference,
         message: 'Your partnership inquiry and license document have been securely received. Our partnerships director will review and follow up within two business days.',
       };

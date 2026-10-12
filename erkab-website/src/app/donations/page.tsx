@@ -1,64 +1,121 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Container } from '@/components/layout/Container';
 import { PageHero } from '@/components/ui/PageHero';
 import { FormField } from '@/components/forms/FormField';
 import { FormError } from '@/components/forms/FormError';
-import { FormSuccess } from '@/components/forms/FormSuccess';
-import { submitDonationPledge, DonationPledgeData } from '@/features/donations/service';
+import {
+  createDonation,
+  getDonationCampaigns,
+  DonationCampaign,
+} from '@/features/donations/service';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
-import { Heart, Loader2, Sparkles } from 'lucide-react';
+import { Heart, Loader2, Sparkles, ShieldAlert, Check } from 'lucide-react';
+
+const SUGGESTED_AMOUNTS = [250, 500, 1000, 2500];
 
 export default function DonationsPage() {
+  const router = useRouter();
   const { locale, t } = useLanguage();
   const isAm = locale === 'am';
 
-  const [formData, setFormData] = useState<DonationPledgeData>({
-    donorName: '',
-    donorEmail: '',
-    phone: '',
-    supportArea: 'Student Scholarships',
-    amountOrItemsDescription: '',
-  });
+  const [campaigns, setCampaigns] = useState<DonationCampaign[]>([]);
+  const [selectedAmount, setSelectedAmount] = useState<number>(500);
+  const [customAmount, setCustomAmount] = useState<string>('');
+  const [campaignSlug, setCampaignSlug] = useState<string>('');
+
+  const [donorName, setDonorName] = useState('');
+  const [donorEmail, setDonorEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [message, setMessage] = useState('');
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [submitted, setSubmitted] = useState(false);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  useEffect(() => {
+    getDonationCampaigns().then((data) => {
+      setCampaigns(data);
+    });
+  }, []);
+
+  const handleSelectAmount = (amt: number) => {
+    setSelectedAmount(amt);
+    setCustomAmount('');
+  };
+
+  const handleCustomAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setCustomAmount(val);
+    const parsed = parseInt(val, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      setSelectedAmount(parsed);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.donorName || !formData.donorEmail || !formData.amountOrItemsDescription) {
+    setError('');
+
+    const finalAmount = customAmount ? parseInt(customAmount, 10) : selectedAmount;
+    if (!finalAmount || isNaN(finalAmount) || finalAmount < 10) {
       setError(
         isAm
-          ? 'እባክዎ ስምዎን፣ ኢሜይልዎን እና የድጋፍ መግለጫውን ያስገቡ።'
-          : 'Please provide your name, email, and pledge details.'
+          ? 'እባክዎ ትክክለኛ የልገሳ መጠን ያስገቡ (ቢያንስ 10 ብር)።'
+          : 'Please enter a valid donation amount (minimum 10 ETB).'
+      );
+      return;
+    }
+
+    if (!isAnonymous && (!donorName || !donorEmail)) {
+      setError(
+        isAm
+          ? 'እባክዎ ሙሉ ስምዎን እና ኢሜይልዎን ያስገቡ ወይም ስም-አልባ የሚለውን ይምረጡ።'
+          : 'Please enter your name and email, or choose to donate anonymously.'
+      );
+      return;
+    }
+
+    if (isAnonymous && !donorEmail) {
+      setError(
+        isAm
+          ? 'ለሙከራ ደረሰኝ ማረጋገጫ እባክዎ ኢሜይል ያስገቡ።'
+          : 'Please enter an email address to receive your demo confirmation.'
       );
       return;
     }
 
     setLoading(true);
-    setError('');
 
     try {
-      await submitDonationPledge(formData);
-      setSubmitted(true);
+      const res = await createDonation({
+        amount: finalAmount,
+        currency: 'ETB',
+        campaignSlug: campaignSlug || undefined,
+        donorName: isAnonymous ? 'Anonymous Supporter' : donorName,
+        email: donorEmail,
+        phone: phone || undefined,
+        message: message || undefined,
+        isAnonymous,
+      });
+
+      // Redirect to the dedicated demo checkout page
+      const paymentRef = res?.paymentReference || (res as any)?.data?.paymentReference;
+      if (paymentRef) {
+        router.push(`/donations/checkout/${paymentRef}`);
+      } else {
+        throw new Error('Donation created but payment reference was not returned.');
+      }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Submission failed';
+      const msg = err instanceof Error ? err.message : 'Failed to create donation';
       setError(
         isAm
-          ? `${msg}። ሰርቨሩ በጊዜያዊነት የማይሰራ ከሆነ እባክዎ በቀጥታ በ donations@erkab.org ያግኙን።`
-          : `${msg}. If the backend server is offline, please contact donations directly at donations@erkab.org.`
+          ? `${msg}። እባክዎ ትንሽ ቆይተው እንደገና ይሞክሩ።`
+          : `${msg}. Please try again shortly.`
       );
-    } finally {
       setLoading(false);
     }
   };
@@ -125,94 +182,154 @@ export default function DonationsPage() {
                   <span className="small text-muted">{t.donationsPage.fundSubtitle}</span>
                 </div>
               </div>
-              <p className="text-muted small text-start mb-4">
-                {t.donationsPage.formNotice}
-              </p>
 
-              {submitted ? (
-                <FormSuccess
-                  title={t.donationsPage.successTitle}
-                  message={t.donationsPage.successMsg}
-                />
-              ) : (
-                <form onSubmit={handleSubmit}>
-                  <FormError message={error} />
+              {/* Prominent Demo Notice */}
+              <div className="alert alert-warning d-flex align-items-start gap-2 mb-4 py-2 px-3 small border-0">
+                <ShieldAlert size={18} className="text-warning-emphasis mt-1 flex-shrink-0" />
+                <span className="text-dark">
+                  <strong>{isAm ? 'የሙከራ ክፍያ ማሳሰቢያ፡' : 'DEMO MODE NOTICE:'}</strong>{' '}
+                  {t.donationsPage.demoNotice}
+                </span>
+              </div>
 
+              <form onSubmit={handleSubmit}>
+                <FormError message={error} />
+
+                {/* Amount Selection */}
+                <div className="mb-4 text-start">
+                  <label className="form-label fw-bold small text-dark d-block">
+                    {t.donationsPage.donationAmount} <span className="text-danger">*</span>
+                  </label>
+                  <div className="row g-2 mb-2">
+                    {SUGGESTED_AMOUNTS.map((amt) => {
+                      const isSelected = selectedAmount === amt && !customAmount;
+                      return (
+                        <div key={amt} className="col-6 col-sm-3">
+                          <button
+                            type="button"
+                            onClick={() => handleSelectAmount(amt)}
+                            className={`btn w-100 py-2 fw-bold text-center border ${
+                              isSelected
+                                ? 'btn-primary text-white border-primary shadow-sm'
+                                : 'btn-light text-dark border-secondary-subtle'
+                            }`}
+                          >
+                            {isSelected && <Check size={14} className="me-1 inline" />}
+                            {amt.toLocaleString()} ETB
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="input-group input-group-sm mt-2">
+                    <span className="input-group-text bg-light text-muted">ETB</span>
+                    <input
+                      type="number"
+                      min="10"
+                      max="1000000"
+                      placeholder={t.donationsPage.customAmount}
+                      className="form-control"
+                      value={customAmount}
+                      onChange={handleCustomAmountChange}
+                    />
+                  </div>
+                </div>
+
+                {/* Impact Campaign Selection */}
+                <div className="mb-3 text-start">
+                  <label className="form-label fw-bold small text-dark d-block">
+                    {t.donationsPage.campaignSelect}
+                  </label>
+                  <select
+                    className="form-select form-select-sm"
+                    value={campaignSlug}
+                    onChange={(e) => setCampaignSlug(e.target.value)}
+                  >
+                    <option value="">{t.donationsPage.allCampaigns}</option>
+                    {campaigns.map((c) => (
+                      <option key={c.slug} value={c.slug}>
+                        {c.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Anonymous Donation Toggle */}
+                <div className="form-check form-switch mb-3 text-start">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    role="switch"
+                    id="anonymousSwitch"
+                    checked={isAnonymous}
+                    onChange={(e) => setIsAnonymous(e.target.checked)}
+                  />
+                  <label className="form-check-label small fw-semibold text-dark" htmlFor="anonymousSwitch">
+                    {t.donationsPage.anonymousLabel}
+                  </label>
+                </div>
+
+                {!isAnonymous && (
                   <FormField
                     label={t.donationsPage.donorName}
                     name="donorName"
-                    value={formData.donorName}
-                    onChange={handleChange}
+                    value={donorName}
+                    onChange={(e) => setDonorName(e.target.value)}
                     required
                   />
+                )}
 
-                  <div className="row g-3">
-                    <div className="col-12 col-md-6">
-                      <FormField
-                        label={t.donationsPage.donorEmail}
-                        name="donorEmail"
-                        type="email"
-                        value={formData.donorEmail}
-                        onChange={handleChange}
-                        required
-                      />
-                    </div>
-
-                    <div className="col-12 col-md-6">
-                      <FormField
-                        label={t.donationsPage.donorPhone}
-                        name="phone"
-                        type="tel"
-                        value={formData.phone}
-                        onChange={handleChange}
-                      />
-                    </div>
+                <div className="row g-3">
+                  <div className="col-12 col-md-6">
+                    <FormField
+                      label={t.donationsPage.donorEmail}
+                      name="donorEmail"
+                      type="email"
+                      value={donorEmail}
+                      onChange={(e) => setDonorEmail(e.target.value)}
+                      required
+                    />
                   </div>
+                  <div className="col-12 col-md-6">
+                    <FormField
+                      label={t.donationsPage.donorPhone}
+                      name="phone"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
 
-                  <FormField
-                    label={t.donationsPage.supportArea}
-                    name="supportArea"
-                    value={formData.supportArea}
-                    onChange={handleChange}
-                    options={[
-                      { value: 'Student Scholarships', label: t.donationsPage.area1 },
-                      { value: 'Computer Lab Equipment', label: t.donationsPage.area2 },
-                      { value: 'Solar Power & Internet', label: t.donationsPage.area3 },
-                      { value: 'General Operations', label: t.donationsPage.area4 },
-                    ]}
-                    required
-                  />
+                <FormField
+                  label={t.donationsPage.donorMessage}
+                  name="message"
+                  isTextArea
+                  rows={2}
+                  placeholder={t.donationsPage.donorMessagePlaceholder}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                />
 
-                  <FormField
-                    label={t.donationsPage.pledgeDesc}
-                    name="amountOrItemsDescription"
-                    isTextArea
-                    rows={3}
-                    placeholder={t.donationsPage.pledgePlaceholder}
-                    value={formData.amountOrItemsDescription}
-                    onChange={handleChange}
-                    required
-                  />
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="btn-erkab btn-erkab-lime w-100 justify-content-center mt-3"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 size={16} className="spinner-border spinner-border-sm" />
-                        <span>{t.donationsPage.submitting}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={16} />
-                        <span>{t.donationsPage.submitBtn}</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-              )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn-erkab btn-erkab-lime w-100 justify-content-center mt-3"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 size={16} className="spinner-border spinner-border-sm" />
+                      <span>{t.donationsPage.submitting}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={16} />
+                      <span>{t.donationsPage.submitBtn}</span>
+                    </>
+                  )}
+                </button>
+              </form>
             </div>
           </div>
         </Container>

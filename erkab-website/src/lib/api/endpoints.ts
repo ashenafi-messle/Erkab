@@ -15,17 +15,43 @@ export const API_ENDPOINTS = {
     CONFIRM_DEMO: (reference: string) => `/api/v1/web/tutoring/payments/${reference}/confirm-demo`,
   },
   PARTNERSHIPS: {
-    INQUIRY: '/api/v1/partnerships/inquiry',
+    SUBMIT: '/api/v1/web/partnerships',
   },
   DONATIONS: {
-    PLEDGE: '/api/v1/donations/pledge',
+    CAMPAIGNS: '/api/v1/web/donation-campaigns',
+    CAMPAIGN_DETAIL: (slug: string) => `/api/v1/web/donation-campaigns/${slug}`,
+    CREATE: '/api/v1/web/donations',
+    PAYMENT: (reference: string) => `/api/v1/web/donations/payments/${reference}`,
+    CONFIRM_DEMO: (reference: string) => `/api/v1/web/donations/payments/${reference}/confirm-demo`,
+  },
+  NEWS: {
+    LIST: '/api/v1/web/news',
+    DETAIL: (slug: string) => `/api/v1/web/news/${slug}`,
   },
   ANNOUNCEMENTS: {
-    LIST: '/api/v1/announcements',
-    DETAIL: (id: string) => `/api/v1/announcements/${id}`,
+    LIST: '/api/v1/web/news',
+    DETAIL: (slug: string) => `/api/v1/web/news/${slug}`,
   },
   CONTACT: {
     SEND: '/api/v1/contact',
+  },
+  ADMIN: {
+    PARTNERSHIPS: {
+      LIST: '/api/v1/admin/partnerships',
+      DETAIL: (id: string) => `/api/v1/admin/partnerships/${id}`,
+      REVIEW: (id: string) => `/api/v1/admin/partnerships/${id}/review`,
+      DOCUMENT_URL: (docId: string) => `/api/v1/admin/partnerships/documents/${docId}/access-url`,
+    },
+    DONATIONS: {
+      LIST: '/api/v1/admin/donations',
+    },
+    NEWS: {
+      LIST: '/api/v1/admin/news',
+      CREATE: '/api/v1/admin/news',
+      DETAIL: (id: string) => `/api/v1/admin/news/${id}`,
+      UPDATE: (id: string) => `/api/v1/admin/news/${id}`,
+      DELETE: (id: string) => `/api/v1/admin/news/${id}`,
+    },
   },
 } as const;
 
