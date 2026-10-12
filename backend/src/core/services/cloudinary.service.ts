@@ -101,7 +101,7 @@ export class CloudinaryService {
 
   public static async uploadDocument(
     file: FileToUpload,
-    subfolder: 'students' | 'trainers' | 'tutors',
+    subfolder: 'students' | 'trainers' | 'tutors' | 'partnerships' | 'news',
     category: string
   ): Promise<UploadedFileResult> {
     if (!file || !file.buffer || file.buffer.length === 0) {
@@ -219,17 +219,31 @@ export class CloudinaryService {
     }
   }
 
-  public static generateSignedReviewUrl(publicId: string, resourceType = 'raw'): string {
+  public static generateSignedReviewUrl(
+    publicId: string,
+    resourceType = 'raw',
+    format = 'pdf'
+  ): string {
     if (!this.isConfigured() || publicId.startsWith('mock_')) {
       return `https://res.cloudinary.com/mock-erkab/${publicId}`;
     }
 
     // Generate signed authenticated delivery URL expiring in 1 hour
     const expiresAt = Math.floor(Date.now() / 1000) + 3600;
-    return cloudinary.utils.private_download_url(publicId, 'pdf', {
-      resource_type: resourceType as any,
-      type: 'authenticated',
-      expires_at: expiresAt,
-    });
+    try {
+      return cloudinary.url(publicId, {
+        resource_type: resourceType as any,
+        type: 'authenticated',
+        sign_url: true,
+        expires_at: expiresAt,
+        secure: true,
+      });
+    } catch {
+      return cloudinary.utils.private_download_url(publicId, format, {
+        resource_type: resourceType as any,
+        type: 'authenticated',
+        expires_at: expiresAt,
+      });
+    }
   }
 }

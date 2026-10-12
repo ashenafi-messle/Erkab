@@ -1,0 +1,64 @@
+'use client';
+
+import React from 'react';
+import Link from 'next/link';
+import { Container } from '@/components/layout/Container';
+import { PageHero } from '@/components/ui/PageHero';
+import { Announcement, getLocalizedAnnouncement } from '@/features/announcements/service';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { ArrowLeft, Calendar } from 'lucide-react';
+
+interface NewsDetailContentProps {
+  initialAnnouncement: Announcement;
+}
+
+export function NewsDetailContent({ initialAnnouncement }: NewsDetailContentProps) {
+  const { locale, t } = useLanguage();
+  const isAm = locale === 'am';
+  const announcement = getLocalizedAnnouncement(initialAnnouncement, locale);
+
+  return (
+    <>
+      <PageHero
+        badge={isAm ? 'ቅበላ እና ምዝገባ' : announcement.category}
+        title={announcement.title}
+        description={announcement.summary}
+      />
+
+      <section className="section-py section-bg-white pt-0">
+        <Container>
+          <div className="mx-auto" style={{ maxWidth: '780px' }}>
+            <div className="d-flex align-items-center justify-content-between pb-3 mb-4 border-bottom text-muted small">
+              <div className="d-flex align-items-center gap-2">
+                <Calendar size={16} />
+                <span>{announcement.date}</span>
+              </div>
+              <Link href="/news" className="text-primary text-decoration-none d-inline-flex align-items-center gap-1">
+                <ArrowLeft size={16} />
+                <span>{t.newsPage.backToNews}</span>
+              </Link>
+            </div>
+
+            <div className="lead fs-6 text-dark mb-4" style={{ lineHeight: '1.8' }}>
+              {announcement.content}
+            </div>
+
+            <div className="p-4 rounded-4 bg-light border border-light-subtle my-5 text-start">
+              <h3 className="h6 fw-bold text-dark mb-2">
+                {isAm ? 'በዚህ የስልጠና ዙር መሳተፍ ይፈልጋሉ?' : 'Interested in participating in this cohort?'}
+              </h3>
+              <p className="small text-muted mb-3">
+                {isAm
+                  ? 'የአመልካቾች ቅበላ በተከታታይ ግምገማ የሚከናወን ነው። አስቀድመው መመዘኛዎችን እንዲገመግሙ እና ሰነዶችን እንዲያዘጋጁ እንመክራለን።'
+                  : 'Admissions are processed on a rolling review model. We recommend reviewing eligibility and preparing your verification documents early.'}
+              </p>
+              <Link href="/apply/student" className="btn-erkab btn-erkab-lime">
+                <span>{isAm ? 'የተማሪ ማመልከቻ ይጀምሩ' : 'Start Student Application'}</span>
+              </Link>
+            </div>
+          </div>
+        </Container>
+      </section>
+    </>
+  );
+}

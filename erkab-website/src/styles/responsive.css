@@ -1,0 +1,194 @@
+/* Responsive CSS Rules */
+
+/* Prevent horizontal overflow globally */
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Intermediate Desktop Viewport (992px - 1199.98px) to protect actions */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+  .nav-menu-desktop {
+    gap: 1.1rem;
+  }
+  .nav-link-item {
+    font-size: 0.88rem;
+  }
+  .header-actions {
+    gap: 0.5rem;
+  }
+  .header-actions .btn-erkab {
+    padding: 0.45rem 0.95rem;
+    font-size: 0.84rem;
+  }
+  .brand-text .brand-tagline {
+    display: none;
+  }
+}
+
+/* Base Mobile Overrides & Breakpoints */
+@media (max-width: 991.98px) {
+  :root {
+    --header-height: 68px;
+  }
+
+  .nav-menu-desktop {
+    display: none;
+  }
+
+  .nav-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .hero-banner {
+    padding: 3rem 1.75rem;
+    border-radius: var(--radius-lg);
+  }
+
+  .hero-wrapper {
+    padding: 1rem 0.75rem 2rem 0.75rem;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .hero-actions .btn-erkab {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .impact-panel {
+    padding: 2.25rem 1.5rem;
+    border-radius: var(--radius-lg);
+  }
+
+  .section-py {
+    padding-top: 3.5rem;
+    padding-bottom: 3.5rem;
+  }
+
+  .section-header {
+    margin-bottom: 2.25rem;
+  }
+
+  .form-card {
+    padding: 1.5rem 1.25rem;
+    border-radius: var(--radius-lg);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .hero-image-container {
+    margin-top: 1.5rem;
+  }
+
+  .hero-floating-top {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.75rem;
+    top: 10px;
+    left: 10px;
+  }
+
+  .hero-floating-badge {
+    padding: 0.65rem 0.85rem;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+  }
+
+  .hero-visual-card {
+    margin-top: 2rem;
+  }
+
+  .strip-content {
+    gap: 1rem;
+    flex-direction: column;
+  }
+
+  .step-progress-bar {
+    gap: 0.5rem;
+  }
+
+  .step-label {
+    display: none;
+  }
+
+  .subpage-hero {
+    padding: 3rem 0 2.5rem 0;
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-banner {
+    padding: 2.25rem 1.25rem;
+    border-radius: var(--radius-md);
+  }
+
+  .brand-name {
+    font-size: 1.05rem;
+  }
+
+  .brand-tagline {
+    font-size: 0.65rem;
+  }
+
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
+  }
+
+  .program-card {
+    padding: 1rem 0.85rem;
+  }
+
+  .feature-card {
+    padding: 1.25rem 1rem;
+  }
+}
+
+/* Extra small screens (e.g. 320px - 360px) */
+@media (max-width: 360px) {
+  .hero-title {
+    font-size: 1.85rem;
+  }
+
+  .hero-banner {
+    padding: 1.75rem 1rem;
+  }
+
+  .btn-erkab {
+    padding: 0.7rem 1.1rem;
+    font-size: 0.88rem;
+  }
+}
+
+/* Accessibility: Respect Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

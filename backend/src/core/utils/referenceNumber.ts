@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-export type ApplicationTypePrefix = 'STU' | 'TRN' | 'TUT' | 'PAY';
+export type ApplicationTypePrefix = 'STU' | 'TRN' | 'TUT' | 'PAY' | 'PRT' | 'DON' | 'DPAY';
 
 export function generateReferenceNumber(type: ApplicationTypePrefix): string {
   const year = new Date().getFullYear();
