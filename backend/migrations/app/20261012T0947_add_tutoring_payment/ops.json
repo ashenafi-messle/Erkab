@@ -1,0 +1,206 @@
+[
+  {
+    "id": "table.TutoringPayment",
+    "label": "Create table \"TutoringPayment\"",
+    "summary": "Creates table \"TutoringPayment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "TutoringPayment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"TutoringPayment\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"TutoringPayment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"TutoringPayment\"",
+        "sql": "CREATE TABLE \"public\".\"TutoringPayment\" (\n  \"amount\" int4 NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"currency\" text DEFAULT 'ETB' NOT NULL,\n  \"id\" text NOT NULL,\n  \"paymentMode\" text DEFAULT 'DEMO' NOT NULL,\n  \"paymentReference\" text NOT NULL,\n  \"status\" text DEFAULT 'PENDING' NOT NULL,\n  \"transactionId\" text,\n  \"tutorApplicationId\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"TutoringPayment\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"TutoringPayment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.TutoringPayment.TutoringPayment_paymentReference_key",
+    "label": "Add unique constraint on \"TutoringPayment\" (paymentReference)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "TutoringPayment_paymentReference_key",
+        "table": "TutoringPayment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"TutoringPayment_paymentReference_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "TutoringPayment_paymentReference_key",
+          "public",
+          "\"public\".\"TutoringPayment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"TutoringPayment_paymentReference_key\"",
+        "sql": "ALTER TABLE \"public\".\"TutoringPayment\" ADD CONSTRAINT \"TutoringPayment_paymentReference_key\" UNIQUE (\"paymentReference\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"TutoringPayment_paymentReference_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "TutoringPayment_paymentReference_key",
+          "public",
+          "\"public\".\"TutoringPayment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.TutoringPayment.TutoringPayment_transactionId_key",
+    "label": "Add unique constraint on \"TutoringPayment\" (transactionId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "TutoringPayment_transactionId_key",
+        "table": "TutoringPayment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"TutoringPayment_transactionId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "TutoringPayment_transactionId_key",
+          "public",
+          "\"public\".\"TutoringPayment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"TutoringPayment_transactionId_key\"",
+        "sql": "ALTER TABLE \"public\".\"TutoringPayment\" ADD CONSTRAINT \"TutoringPayment_transactionId_key\" UNIQUE (\"transactionId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"TutoringPayment_transactionId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "TutoringPayment_transactionId_key",
+          "public",
+          "\"public\".\"TutoringPayment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.TutoringPayment.TutoringPayment_tutorApplicationId_idx_cac902e5",
+    "label": "Create index \"TutoringPayment_tutorApplicationId_idx_cac902e5\" on \"TutoringPayment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "TutoringPayment_tutorApplicationId_idx_cac902e5",
+        "table": "TutoringPayment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"TutoringPayment_tutorApplicationId_idx_cac902e5\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"TutoringPayment_tutorApplicationId_idx_cac902e5\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"TutoringPayment_tutorApplicationId_idx_cac902e5\"",
+        "sql": "CREATE INDEX \"TutoringPayment_tutorApplicationId_idx_cac902e5\" ON \"public\".\"TutoringPayment\" (\"tutorApplicationId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"TutoringPayment_tutorApplicationId_idx_cac902e5\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"TutoringPayment_tutorApplicationId_idx_cac902e5\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.TutoringPayment.TutoringPayment_tutorApplicationId_fkey",
+    "label": "Add foreign key \"TutoringPayment_tutorApplicationId_fkey\" on \"TutoringPayment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "TutoringPayment_tutorApplicationId_fkey",
+        "table": "TutoringPayment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"TutoringPayment_tutorApplicationId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "TutoringPayment_tutorApplicationId_fkey",
+          "public",
+          "\"public\".\"TutoringPayment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"TutoringPayment_tutorApplicationId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"TutoringPayment\"\nADD CONSTRAINT \"TutoringPayment_tutorApplicationId_fkey\"\nFOREIGN KEY (\"tutorApplicationId\")\nREFERENCES \"public\".\"TutorApplication\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"TutoringPayment_tutorApplicationId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "TutoringPayment_tutorApplicationId_fkey",
+          "public",
+          "\"public\".\"TutoringPayment\""
+        ]
+      }
+    ]
+  }
+]

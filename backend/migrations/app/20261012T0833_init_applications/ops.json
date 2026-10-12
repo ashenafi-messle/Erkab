@@ -1,0 +1,988 @@
+[
+  {
+    "id": "schema.public",
+    "label": "Create schema \"public\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [],
+    "execute": [
+      {
+        "description": "Create schema \"public\"",
+        "sql": "CREATE SCHEMA IF NOT EXISTS \"public\"",
+        "params": []
+      }
+    ],
+    "postcheck": []
+  },
+  {
+    "id": "table.ApplicationDocument",
+    "label": "Create table \"ApplicationDocument\"",
+    "summary": "Creates table \"ApplicationDocument\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "ApplicationDocument"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"ApplicationDocument\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ApplicationDocument\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"ApplicationDocument\"",
+        "sql": "CREATE TABLE \"public\".\"ApplicationDocument\" (\n  \"category\" text NOT NULL,\n  \"cloudinaryPublicId\" text NOT NULL,\n  \"cloudinaryResourceType\" text DEFAULT 'raw' NOT NULL,\n  \"cloudinarySecureUrl\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"fileSize\" int4 NOT NULL,\n  \"fileType\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"originalFilename\" text NOT NULL,\n  \"studentApplicationId\" text,\n  \"trainerApplicationId\" text,\n  \"tutorApplicationId\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"ApplicationDocument\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ApplicationDocument\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.ApplicationReview",
+    "label": "Create table \"ApplicationReview\"",
+    "summary": "Creates table \"ApplicationReview\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "ApplicationReview"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"ApplicationReview\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ApplicationReview\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"ApplicationReview\"",
+        "sql": "CREATE TABLE \"public\".\"ApplicationReview\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"decision\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"notes\" text,\n  \"reviewerId\" text NOT NULL,\n  \"reviewerName\" text NOT NULL,\n  \"studentApplicationId\" text,\n  \"trainerApplicationId\" text,\n  \"tutorApplicationId\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"ApplicationReview\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ApplicationReview\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.StudentApplication",
+    "label": "Create table \"StudentApplication\"",
+    "summary": "Creates table \"StudentApplication\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "StudentApplication"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"StudentApplication\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"StudentApplication\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"StudentApplication\"",
+        "sql": "CREATE TABLE \"public\".\"StudentApplication\" (\n  \"age\" int4 NOT NULL,\n  \"classCompletionYear\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"email\" text NOT NULL,\n  \"fullName\" text NOT NULL,\n  \"gender\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"programId\" text NOT NULL,\n  \"referenceNumber\" text NOT NULL,\n  \"status\" text DEFAULT 'PENDING' NOT NULL,\n  \"telegramPhone\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"StudentApplication\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"StudentApplication\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.TrainerApplication",
+    "label": "Create table \"TrainerApplication\"",
+    "summary": "Creates table \"TrainerApplication\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "TrainerApplication"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"TrainerApplication\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"TrainerApplication\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"TrainerApplication\"",
+        "sql": "CREATE TABLE \"public\".\"TrainerApplication\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"email\" text NOT NULL,\n  \"expertiseTrack\" text NOT NULL,\n  \"fullName\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"portfolioUrl\" text,\n  \"referenceNumber\" text NOT NULL,\n  \"status\" text DEFAULT 'PENDING' NOT NULL,\n  \"teachingStatement\" text NOT NULL,\n  \"telegramPhone\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"yearsOfExperience\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"TrainerApplication\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"TrainerApplication\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.TrainingProgram",
+    "label": "Create table \"TrainingProgram\"",
+    "summary": "Creates table \"TrainingProgram\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "TrainingProgram"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"TrainingProgram\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"TrainingProgram\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"TrainingProgram\"",
+        "sql": "CREATE TABLE \"public\".\"TrainingProgram\" (\n  \"careerPaths\" text NOT NULL,\n  \"category\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"delivery\" text NOT NULL,\n  \"description\" text NOT NULL,\n  \"duration\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"image\" text NOT NULL,\n  \"imageAlt\" text NOT NULL,\n  \"isPublished\" bool DEFAULT true NOT NULL,\n  \"modules\" text NOT NULL,\n  \"prerequisites\" text NOT NULL,\n  \"scholarship\" bool DEFAULT true NOT NULL,\n  \"skills\" text NOT NULL,\n  \"slug\" text NOT NULL,\n  \"summary\" text NOT NULL,\n  \"title\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"TrainingProgram\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"TrainingProgram\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.TutorApplication",
+    "label": "Create table \"TutorApplication\"",
+    "summary": "Creates table \"TutorApplication\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "TutorApplication"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"TutorApplication\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"TutorApplication\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"TutorApplication\"",
+        "sql": "CREATE TABLE \"public\".\"TutorApplication\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"deliveryPreference\" text NOT NULL,\n  \"email\" text,\n  \"experience\" text,\n  \"gradeLevel\" text NOT NULL,\n  \"hourlyRate\" text,\n  \"id\" text NOT NULL,\n  \"locationDetails\" text,\n  \"parentOrContactPhone\" text NOT NULL,\n  \"qualifications\" text,\n  \"referenceNumber\" text NOT NULL,\n  \"status\" text DEFAULT 'PENDING' NOT NULL,\n  \"studentOrApplicantName\" text NOT NULL,\n  \"subjects\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"TutorApplication\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"TutorApplication\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.StudentApplication.StudentApplication_referenceNumber_key",
+    "label": "Add unique constraint on \"StudentApplication\" (referenceNumber)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "StudentApplication_referenceNumber_key",
+        "table": "StudentApplication"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"StudentApplication_referenceNumber_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "StudentApplication_referenceNumber_key",
+          "public",
+          "\"public\".\"StudentApplication\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"StudentApplication_referenceNumber_key\"",
+        "sql": "ALTER TABLE \"public\".\"StudentApplication\" ADD CONSTRAINT \"StudentApplication_referenceNumber_key\" UNIQUE (\"referenceNumber\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"StudentApplication_referenceNumber_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "StudentApplication_referenceNumber_key",
+          "public",
+          "\"public\".\"StudentApplication\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.TrainerApplication.TrainerApplication_referenceNumber_key",
+    "label": "Add unique constraint on \"TrainerApplication\" (referenceNumber)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "TrainerApplication_referenceNumber_key",
+        "table": "TrainerApplication"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"TrainerApplication_referenceNumber_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "TrainerApplication_referenceNumber_key",
+          "public",
+          "\"public\".\"TrainerApplication\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"TrainerApplication_referenceNumber_key\"",
+        "sql": "ALTER TABLE \"public\".\"TrainerApplication\" ADD CONSTRAINT \"TrainerApplication_referenceNumber_key\" UNIQUE (\"referenceNumber\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"TrainerApplication_referenceNumber_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "TrainerApplication_referenceNumber_key",
+          "public",
+          "\"public\".\"TrainerApplication\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.TrainingProgram.TrainingProgram_slug_key",
+    "label": "Add unique constraint on \"TrainingProgram\" (slug)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "TrainingProgram_slug_key",
+        "table": "TrainingProgram"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"TrainingProgram_slug_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "TrainingProgram_slug_key",
+          "public",
+          "\"public\".\"TrainingProgram\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"TrainingProgram_slug_key\"",
+        "sql": "ALTER TABLE \"public\".\"TrainingProgram\" ADD CONSTRAINT \"TrainingProgram_slug_key\" UNIQUE (\"slug\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"TrainingProgram_slug_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "TrainingProgram_slug_key",
+          "public",
+          "\"public\".\"TrainingProgram\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.TutorApplication.TutorApplication_referenceNumber_key",
+    "label": "Add unique constraint on \"TutorApplication\" (referenceNumber)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "TutorApplication_referenceNumber_key",
+        "table": "TutorApplication"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"TutorApplication_referenceNumber_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "TutorApplication_referenceNumber_key",
+          "public",
+          "\"public\".\"TutorApplication\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"TutorApplication_referenceNumber_key\"",
+        "sql": "ALTER TABLE \"public\".\"TutorApplication\" ADD CONSTRAINT \"TutorApplication_referenceNumber_key\" UNIQUE (\"referenceNumber\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"TutorApplication_referenceNumber_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "TutorApplication_referenceNumber_key",
+          "public",
+          "\"public\".\"TutorApplication\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.ApplicationDocument.ApplicationDocument_studentApplicationId_idx_9016b496",
+    "label": "Create index \"ApplicationDocument_studentApplicationId_idx_9016b496\" on \"ApplicationDocument\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ApplicationDocument_studentApplicationId_idx_9016b496",
+        "table": "ApplicationDocument"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ApplicationDocument_studentApplicationId_idx_9016b496\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ApplicationDocument_studentApplicationId_idx_9016b496\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ApplicationDocument_studentApplicationId_idx_9016b496\"",
+        "sql": "CREATE INDEX \"ApplicationDocument_studentApplicationId_idx_9016b496\" ON \"public\".\"ApplicationDocument\" (\"studentApplicationId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ApplicationDocument_studentApplicationId_idx_9016b496\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ApplicationDocument_studentApplicationId_idx_9016b496\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.ApplicationDocument.ApplicationDocument_trainerApplicationId_idx_cc164910",
+    "label": "Create index \"ApplicationDocument_trainerApplicationId_idx_cc164910\" on \"ApplicationDocument\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ApplicationDocument_trainerApplicationId_idx_cc164910",
+        "table": "ApplicationDocument"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ApplicationDocument_trainerApplicationId_idx_cc164910\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ApplicationDocument_trainerApplicationId_idx_cc164910\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ApplicationDocument_trainerApplicationId_idx_cc164910\"",
+        "sql": "CREATE INDEX \"ApplicationDocument_trainerApplicationId_idx_cc164910\" ON \"public\".\"ApplicationDocument\" (\"trainerApplicationId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ApplicationDocument_trainerApplicationId_idx_cc164910\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ApplicationDocument_trainerApplicationId_idx_cc164910\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.ApplicationDocument.ApplicationDocument_tutorApplicationId_idx_cac902e5",
+    "label": "Create index \"ApplicationDocument_tutorApplicationId_idx_cac902e5\" on \"ApplicationDocument\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ApplicationDocument_tutorApplicationId_idx_cac902e5",
+        "table": "ApplicationDocument"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ApplicationDocument_tutorApplicationId_idx_cac902e5\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ApplicationDocument_tutorApplicationId_idx_cac902e5\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ApplicationDocument_tutorApplicationId_idx_cac902e5\"",
+        "sql": "CREATE INDEX \"ApplicationDocument_tutorApplicationId_idx_cac902e5\" ON \"public\".\"ApplicationDocument\" (\"tutorApplicationId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ApplicationDocument_tutorApplicationId_idx_cac902e5\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ApplicationDocument_tutorApplicationId_idx_cac902e5\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.ApplicationReview.ApplicationReview_studentApplicationId_idx_9016b496",
+    "label": "Create index \"ApplicationReview_studentApplicationId_idx_9016b496\" on \"ApplicationReview\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ApplicationReview_studentApplicationId_idx_9016b496",
+        "table": "ApplicationReview"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ApplicationReview_studentApplicationId_idx_9016b496\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ApplicationReview_studentApplicationId_idx_9016b496\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ApplicationReview_studentApplicationId_idx_9016b496\"",
+        "sql": "CREATE INDEX \"ApplicationReview_studentApplicationId_idx_9016b496\" ON \"public\".\"ApplicationReview\" (\"studentApplicationId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ApplicationReview_studentApplicationId_idx_9016b496\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ApplicationReview_studentApplicationId_idx_9016b496\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.ApplicationReview.ApplicationReview_trainerApplicationId_idx_cc164910",
+    "label": "Create index \"ApplicationReview_trainerApplicationId_idx_cc164910\" on \"ApplicationReview\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ApplicationReview_trainerApplicationId_idx_cc164910",
+        "table": "ApplicationReview"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ApplicationReview_trainerApplicationId_idx_cc164910\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ApplicationReview_trainerApplicationId_idx_cc164910\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ApplicationReview_trainerApplicationId_idx_cc164910\"",
+        "sql": "CREATE INDEX \"ApplicationReview_trainerApplicationId_idx_cc164910\" ON \"public\".\"ApplicationReview\" (\"trainerApplicationId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ApplicationReview_trainerApplicationId_idx_cc164910\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ApplicationReview_trainerApplicationId_idx_cc164910\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.ApplicationReview.ApplicationReview_tutorApplicationId_idx_cac902e5",
+    "label": "Create index \"ApplicationReview_tutorApplicationId_idx_cac902e5\" on \"ApplicationReview\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ApplicationReview_tutorApplicationId_idx_cac902e5",
+        "table": "ApplicationReview"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ApplicationReview_tutorApplicationId_idx_cac902e5\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ApplicationReview_tutorApplicationId_idx_cac902e5\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ApplicationReview_tutorApplicationId_idx_cac902e5\"",
+        "sql": "CREATE INDEX \"ApplicationReview_tutorApplicationId_idx_cac902e5\" ON \"public\".\"ApplicationReview\" (\"tutorApplicationId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ApplicationReview_tutorApplicationId_idx_cac902e5\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ApplicationReview_tutorApplicationId_idx_cac902e5\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.StudentApplication.StudentApplication_programId_idx_4e50c706",
+    "label": "Create index \"StudentApplication_programId_idx_4e50c706\" on \"StudentApplication\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "StudentApplication_programId_idx_4e50c706",
+        "table": "StudentApplication"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"StudentApplication_programId_idx_4e50c706\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"StudentApplication_programId_idx_4e50c706\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"StudentApplication_programId_idx_4e50c706\"",
+        "sql": "CREATE INDEX \"StudentApplication_programId_idx_4e50c706\" ON \"public\".\"StudentApplication\" (\"programId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"StudentApplication_programId_idx_4e50c706\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"StudentApplication_programId_idx_4e50c706\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.ApplicationDocument.ApplicationDocument_studentApplicationId_fkey",
+    "label": "Add foreign key \"ApplicationDocument_studentApplicationId_fkey\" on \"ApplicationDocument\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "ApplicationDocument_studentApplicationId_fkey",
+        "table": "ApplicationDocument"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"ApplicationDocument_studentApplicationId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ApplicationDocument_studentApplicationId_fkey",
+          "public",
+          "\"public\".\"ApplicationDocument\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"ApplicationDocument_studentApplicationId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"ApplicationDocument\"\nADD CONSTRAINT \"ApplicationDocument_studentApplicationId_fkey\"\nFOREIGN KEY (\"studentApplicationId\")\nREFERENCES \"public\".\"StudentApplication\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"ApplicationDocument_studentApplicationId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ApplicationDocument_studentApplicationId_fkey",
+          "public",
+          "\"public\".\"ApplicationDocument\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.ApplicationDocument.ApplicationDocument_trainerApplicationId_fkey",
+    "label": "Add foreign key \"ApplicationDocument_trainerApplicationId_fkey\" on \"ApplicationDocument\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "ApplicationDocument_trainerApplicationId_fkey",
+        "table": "ApplicationDocument"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"ApplicationDocument_trainerApplicationId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ApplicationDocument_trainerApplicationId_fkey",
+          "public",
+          "\"public\".\"ApplicationDocument\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"ApplicationDocument_trainerApplicationId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"ApplicationDocument\"\nADD CONSTRAINT \"ApplicationDocument_trainerApplicationId_fkey\"\nFOREIGN KEY (\"trainerApplicationId\")\nREFERENCES \"public\".\"TrainerApplication\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"ApplicationDocument_trainerApplicationId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ApplicationDocument_trainerApplicationId_fkey",
+          "public",
+          "\"public\".\"ApplicationDocument\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.ApplicationDocument.ApplicationDocument_tutorApplicationId_fkey",
+    "label": "Add foreign key \"ApplicationDocument_tutorApplicationId_fkey\" on \"ApplicationDocument\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "ApplicationDocument_tutorApplicationId_fkey",
+        "table": "ApplicationDocument"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"ApplicationDocument_tutorApplicationId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ApplicationDocument_tutorApplicationId_fkey",
+          "public",
+          "\"public\".\"ApplicationDocument\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"ApplicationDocument_tutorApplicationId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"ApplicationDocument\"\nADD CONSTRAINT \"ApplicationDocument_tutorApplicationId_fkey\"\nFOREIGN KEY (\"tutorApplicationId\")\nREFERENCES \"public\".\"TutorApplication\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"ApplicationDocument_tutorApplicationId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ApplicationDocument_tutorApplicationId_fkey",
+          "public",
+          "\"public\".\"ApplicationDocument\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.ApplicationReview.ApplicationReview_studentApplicationId_fkey",
+    "label": "Add foreign key \"ApplicationReview_studentApplicationId_fkey\" on \"ApplicationReview\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "ApplicationReview_studentApplicationId_fkey",
+        "table": "ApplicationReview"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"ApplicationReview_studentApplicationId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ApplicationReview_studentApplicationId_fkey",
+          "public",
+          "\"public\".\"ApplicationReview\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"ApplicationReview_studentApplicationId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"ApplicationReview\"\nADD CONSTRAINT \"ApplicationReview_studentApplicationId_fkey\"\nFOREIGN KEY (\"studentApplicationId\")\nREFERENCES \"public\".\"StudentApplication\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"ApplicationReview_studentApplicationId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ApplicationReview_studentApplicationId_fkey",
+          "public",
+          "\"public\".\"ApplicationReview\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.ApplicationReview.ApplicationReview_trainerApplicationId_fkey",
+    "label": "Add foreign key \"ApplicationReview_trainerApplicationId_fkey\" on \"ApplicationReview\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "ApplicationReview_trainerApplicationId_fkey",
+        "table": "ApplicationReview"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"ApplicationReview_trainerApplicationId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ApplicationReview_trainerApplicationId_fkey",
+          "public",
+          "\"public\".\"ApplicationReview\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"ApplicationReview_trainerApplicationId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"ApplicationReview\"\nADD CONSTRAINT \"ApplicationReview_trainerApplicationId_fkey\"\nFOREIGN KEY (\"trainerApplicationId\")\nREFERENCES \"public\".\"TrainerApplication\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"ApplicationReview_trainerApplicationId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ApplicationReview_trainerApplicationId_fkey",
+          "public",
+          "\"public\".\"ApplicationReview\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.ApplicationReview.ApplicationReview_tutorApplicationId_fkey",
+    "label": "Add foreign key \"ApplicationReview_tutorApplicationId_fkey\" on \"ApplicationReview\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "ApplicationReview_tutorApplicationId_fkey",
+        "table": "ApplicationReview"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"ApplicationReview_tutorApplicationId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ApplicationReview_tutorApplicationId_fkey",
+          "public",
+          "\"public\".\"ApplicationReview\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"ApplicationReview_tutorApplicationId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"ApplicationReview\"\nADD CONSTRAINT \"ApplicationReview_tutorApplicationId_fkey\"\nFOREIGN KEY (\"tutorApplicationId\")\nREFERENCES \"public\".\"TutorApplication\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"ApplicationReview_tutorApplicationId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ApplicationReview_tutorApplicationId_fkey",
+          "public",
+          "\"public\".\"ApplicationReview\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.StudentApplication.StudentApplication_programId_fkey",
+    "label": "Add foreign key \"StudentApplication_programId_fkey\" on \"StudentApplication\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "StudentApplication_programId_fkey",
+        "table": "StudentApplication"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"StudentApplication_programId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "StudentApplication_programId_fkey",
+          "public",
+          "\"public\".\"StudentApplication\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"StudentApplication_programId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"StudentApplication\"\nADD CONSTRAINT \"StudentApplication_programId_fkey\"\nFOREIGN KEY (\"programId\")\nREFERENCES \"public\".\"TrainingProgram\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"StudentApplication_programId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "StudentApplication_programId_fkey",
+          "public",
+          "\"public\".\"StudentApplication\""
+        ]
+      }
+    ]
+  }
+]

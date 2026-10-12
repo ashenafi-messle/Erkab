@@ -1,0 +1,818 @@
+[
+  {
+    "id": "table.Donation",
+    "label": "Create table \"Donation\"",
+    "summary": "Creates table \"Donation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "Donation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"Donation\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Donation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"Donation\"",
+        "sql": "CREATE TABLE \"public\".\"Donation\" (\n  \"amountMinor\" int4 NOT NULL,\n  \"campaignId\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"currency\" text DEFAULT 'ETB' NOT NULL,\n  \"donorName\" text,\n  \"email\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"isAnonymous\" bool DEFAULT false NOT NULL,\n  \"message\" text,\n  \"phone\" text,\n  \"reference\" text NOT NULL,\n  \"status\" text DEFAULT 'PENDING_PAYMENT' NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"Donation\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Donation\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.DonationCampaign",
+    "label": "Create table \"DonationCampaign\"",
+    "summary": "Creates table \"DonationCampaign\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "DonationCampaign"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"DonationCampaign\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"DonationCampaign\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"DonationCampaign\"",
+        "sql": "CREATE TABLE \"public\".\"DonationCampaign\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"currency\" text DEFAULT 'ETB' NOT NULL,\n  \"description\" text NOT NULL,\n  \"endsAt\" timestamptz,\n  \"goalAmountMinor\" int4,\n  \"id\" text NOT NULL,\n  \"imageAssetId\" text,\n  \"imageUrl\" text,\n  \"isPublished\" bool DEFAULT true NOT NULL,\n  \"slug\" text NOT NULL,\n  \"startsAt\" timestamptz,\n  \"title\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"DonationCampaign\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"DonationCampaign\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.DonationPayment",
+    "label": "Create table \"DonationPayment\"",
+    "summary": "Creates table \"DonationPayment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "DonationPayment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"DonationPayment\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"DonationPayment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"DonationPayment\"",
+        "sql": "CREATE TABLE \"public\".\"DonationPayment\" (\n  \"amountMinor\" int4 NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"currency\" text DEFAULT 'ETB' NOT NULL,\n  \"donationId\" text NOT NULL,\n  \"failureCode\" text,\n  \"failureMessage\" text,\n  \"id\" text NOT NULL,\n  \"idempotencyKey\" text,\n  \"mode\" text DEFAULT 'DEMO' NOT NULL,\n  \"provider\" text DEFAULT 'DEMO' NOT NULL,\n  \"providerTransactionId\" text,\n  \"reference\" text NOT NULL,\n  \"status\" text DEFAULT 'PENDING' NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"verifiedAt\" timestamptz,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"DonationPayment\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"DonationPayment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.NewsArticle",
+    "label": "Create table \"NewsArticle\"",
+    "summary": "Creates table \"NewsArticle\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "NewsArticle"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"NewsArticle\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"NewsArticle\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"NewsArticle\"",
+        "sql": "CREATE TABLE \"public\".\"NewsArticle\" (\n  \"authorName\" text,\n  \"category\" text DEFAULT 'General' NOT NULL,\n  \"content\" text NOT NULL,\n  \"coverImageAssetId\" text,\n  \"coverImageUrl\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"excerpt\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"publishedAt\" timestamptz,\n  \"slug\" text NOT NULL,\n  \"status\" text DEFAULT 'DRAFT' NOT NULL,\n  \"title\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"NewsArticle\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"NewsArticle\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.PartnershipRequest",
+    "label": "Create table \"PartnershipRequest\"",
+    "summary": "Creates table \"PartnershipRequest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "PartnershipRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"PartnershipRequest\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PartnershipRequest\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"PartnershipRequest\"",
+        "sql": "CREATE TABLE \"public\".\"PartnershipRequest\" (\n  \"city\" text,\n  \"contactPerson\" text NOT NULL,\n  \"country\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"email\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"organizationName\" text NOT NULL,\n  \"organizationType\" text NOT NULL,\n  \"partnershipType\" text NOT NULL,\n  \"phone\" text NOT NULL,\n  \"proposal\" text NOT NULL,\n  \"reference\" text NOT NULL,\n  \"reviewNotes\" text,\n  \"reviewedAt\" timestamptz,\n  \"reviewedBy\" text,\n  \"status\" text DEFAULT 'PENDING' NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"PartnershipRequest\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"PartnershipRequest\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.ApplicationDocument.cloudinaryDeliveryType",
+    "label": "Add column \"cloudinaryDeliveryType\" to \"ApplicationDocument\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "cloudinaryDeliveryType",
+        "table": "ApplicationDocument"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"cloudinaryDeliveryType\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "ApplicationDocument",
+          "cloudinaryDeliveryType"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"cloudinaryDeliveryType\"",
+        "sql": "ALTER TABLE \"public\".\"ApplicationDocument\" ADD COLUMN \"cloudinaryDeliveryType\" text DEFAULT 'authenticated' NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"cloudinaryDeliveryType\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "ApplicationDocument",
+          "cloudinaryDeliveryType"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.ApplicationDocument.partnershipRequestId",
+    "label": "Add column \"partnershipRequestId\" to \"ApplicationDocument\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "partnershipRequestId",
+        "table": "ApplicationDocument"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"partnershipRequestId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "ApplicationDocument",
+          "partnershipRequestId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"partnershipRequestId\"",
+        "sql": "ALTER TABLE \"public\".\"ApplicationDocument\" ADD COLUMN \"partnershipRequestId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"partnershipRequestId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "ApplicationDocument",
+          "partnershipRequestId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.Donation.Donation_reference_key",
+    "label": "Add unique constraint on \"Donation\" (reference)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "Donation_reference_key",
+        "table": "Donation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"Donation_reference_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Donation_reference_key",
+          "public",
+          "\"public\".\"Donation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"Donation_reference_key\"",
+        "sql": "ALTER TABLE \"public\".\"Donation\" ADD CONSTRAINT \"Donation_reference_key\" UNIQUE (\"reference\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"Donation_reference_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Donation_reference_key",
+          "public",
+          "\"public\".\"Donation\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.DonationCampaign.DonationCampaign_slug_key",
+    "label": "Add unique constraint on \"DonationCampaign\" (slug)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "DonationCampaign_slug_key",
+        "table": "DonationCampaign"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"DonationCampaign_slug_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "DonationCampaign_slug_key",
+          "public",
+          "\"public\".\"DonationCampaign\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"DonationCampaign_slug_key\"",
+        "sql": "ALTER TABLE \"public\".\"DonationCampaign\" ADD CONSTRAINT \"DonationCampaign_slug_key\" UNIQUE (\"slug\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"DonationCampaign_slug_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "DonationCampaign_slug_key",
+          "public",
+          "\"public\".\"DonationCampaign\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.DonationPayment.DonationPayment_reference_key",
+    "label": "Add unique constraint on \"DonationPayment\" (reference)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "DonationPayment_reference_key",
+        "table": "DonationPayment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"DonationPayment_reference_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "DonationPayment_reference_key",
+          "public",
+          "\"public\".\"DonationPayment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"DonationPayment_reference_key\"",
+        "sql": "ALTER TABLE \"public\".\"DonationPayment\" ADD CONSTRAINT \"DonationPayment_reference_key\" UNIQUE (\"reference\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"DonationPayment_reference_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "DonationPayment_reference_key",
+          "public",
+          "\"public\".\"DonationPayment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.DonationPayment.DonationPayment_idempotencyKey_key",
+    "label": "Add unique constraint on \"DonationPayment\" (idempotencyKey)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "DonationPayment_idempotencyKey_key",
+        "table": "DonationPayment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"DonationPayment_idempotencyKey_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "DonationPayment_idempotencyKey_key",
+          "public",
+          "\"public\".\"DonationPayment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"DonationPayment_idempotencyKey_key\"",
+        "sql": "ALTER TABLE \"public\".\"DonationPayment\" ADD CONSTRAINT \"DonationPayment_idempotencyKey_key\" UNIQUE (\"idempotencyKey\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"DonationPayment_idempotencyKey_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "DonationPayment_idempotencyKey_key",
+          "public",
+          "\"public\".\"DonationPayment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.DonationPayment.DonationPayment_providerTransactionId_key",
+    "label": "Add unique constraint on \"DonationPayment\" (providerTransactionId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "DonationPayment_providerTransactionId_key",
+        "table": "DonationPayment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"DonationPayment_providerTransactionId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "DonationPayment_providerTransactionId_key",
+          "public",
+          "\"public\".\"DonationPayment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"DonationPayment_providerTransactionId_key\"",
+        "sql": "ALTER TABLE \"public\".\"DonationPayment\" ADD CONSTRAINT \"DonationPayment_providerTransactionId_key\" UNIQUE (\"providerTransactionId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"DonationPayment_providerTransactionId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "DonationPayment_providerTransactionId_key",
+          "public",
+          "\"public\".\"DonationPayment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.NewsArticle.NewsArticle_slug_key",
+    "label": "Add unique constraint on \"NewsArticle\" (slug)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "NewsArticle_slug_key",
+        "table": "NewsArticle"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"NewsArticle_slug_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "NewsArticle_slug_key",
+          "public",
+          "\"public\".\"NewsArticle\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"NewsArticle_slug_key\"",
+        "sql": "ALTER TABLE \"public\".\"NewsArticle\" ADD CONSTRAINT \"NewsArticle_slug_key\" UNIQUE (\"slug\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"NewsArticle_slug_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "NewsArticle_slug_key",
+          "public",
+          "\"public\".\"NewsArticle\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.PartnershipRequest.PartnershipRequest_reference_key",
+    "label": "Add unique constraint on \"PartnershipRequest\" (reference)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "PartnershipRequest_reference_key",
+        "table": "PartnershipRequest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"PartnershipRequest_reference_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "PartnershipRequest_reference_key",
+          "public",
+          "\"public\".\"PartnershipRequest\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"PartnershipRequest_reference_key\"",
+        "sql": "ALTER TABLE \"public\".\"PartnershipRequest\" ADD CONSTRAINT \"PartnershipRequest_reference_key\" UNIQUE (\"reference\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"PartnershipRequest_reference_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "PartnershipRequest_reference_key",
+          "public",
+          "\"public\".\"PartnershipRequest\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.ApplicationDocument.ApplicationDocument_partnershipRequestId_idx_199f2794",
+    "label": "Create index \"ApplicationDocument_partnershipRequestId_idx_199f2794\" on \"ApplicationDocument\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ApplicationDocument_partnershipRequestId_idx_199f2794",
+        "table": "ApplicationDocument"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ApplicationDocument_partnershipRequestId_idx_199f2794\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ApplicationDocument_partnershipRequestId_idx_199f2794\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ApplicationDocument_partnershipRequestId_idx_199f2794\"",
+        "sql": "CREATE INDEX \"ApplicationDocument_partnershipRequestId_idx_199f2794\" ON \"public\".\"ApplicationDocument\" (\"partnershipRequestId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ApplicationDocument_partnershipRequestId_idx_199f2794\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ApplicationDocument_partnershipRequestId_idx_199f2794\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.Donation.Donation_campaignId_idx_3aacd648",
+    "label": "Create index \"Donation_campaignId_idx_3aacd648\" on \"Donation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "Donation_campaignId_idx_3aacd648",
+        "table": "Donation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"Donation_campaignId_idx_3aacd648\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Donation_campaignId_idx_3aacd648\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"Donation_campaignId_idx_3aacd648\"",
+        "sql": "CREATE INDEX \"Donation_campaignId_idx_3aacd648\" ON \"public\".\"Donation\" (\"campaignId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"Donation_campaignId_idx_3aacd648\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"Donation_campaignId_idx_3aacd648\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.DonationPayment.DonationPayment_donationId_idx_dea7c586",
+    "label": "Create index \"DonationPayment_donationId_idx_dea7c586\" on \"DonationPayment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "DonationPayment_donationId_idx_dea7c586",
+        "table": "DonationPayment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"DonationPayment_donationId_idx_dea7c586\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"DonationPayment_donationId_idx_dea7c586\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"DonationPayment_donationId_idx_dea7c586\"",
+        "sql": "CREATE INDEX \"DonationPayment_donationId_idx_dea7c586\" ON \"public\".\"DonationPayment\" (\"donationId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"DonationPayment_donationId_idx_dea7c586\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"DonationPayment_donationId_idx_dea7c586\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.Donation.Donation_campaignId_fkey",
+    "label": "Add foreign key \"Donation_campaignId_fkey\" on \"Donation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "Donation_campaignId_fkey",
+        "table": "Donation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"Donation_campaignId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Donation_campaignId_fkey",
+          "public",
+          "\"public\".\"Donation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"Donation_campaignId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"Donation\"\nADD CONSTRAINT \"Donation_campaignId_fkey\"\nFOREIGN KEY (\"campaignId\")\nREFERENCES \"public\".\"DonationCampaign\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"Donation_campaignId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "Donation_campaignId_fkey",
+          "public",
+          "\"public\".\"Donation\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.DonationPayment.DonationPayment_donationId_fkey",
+    "label": "Add foreign key \"DonationPayment_donationId_fkey\" on \"DonationPayment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "DonationPayment_donationId_fkey",
+        "table": "DonationPayment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"DonationPayment_donationId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "DonationPayment_donationId_fkey",
+          "public",
+          "\"public\".\"DonationPayment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"DonationPayment_donationId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"DonationPayment\"\nADD CONSTRAINT \"DonationPayment_donationId_fkey\"\nFOREIGN KEY (\"donationId\")\nREFERENCES \"public\".\"Donation\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"DonationPayment_donationId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "DonationPayment_donationId_fkey",
+          "public",
+          "\"public\".\"DonationPayment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.ApplicationDocument.ApplicationDocument_partnershipRequestId_fkey",
+    "label": "Add foreign key \"ApplicationDocument_partnershipRequestId_fkey\" on \"ApplicationDocument\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "ApplicationDocument_partnershipRequestId_fkey",
+        "table": "ApplicationDocument"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"ApplicationDocument_partnershipRequestId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ApplicationDocument_partnershipRequestId_fkey",
+          "public",
+          "\"public\".\"ApplicationDocument\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"ApplicationDocument_partnershipRequestId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"ApplicationDocument\"\nADD CONSTRAINT \"ApplicationDocument_partnershipRequestId_fkey\"\nFOREIGN KEY (\"partnershipRequestId\")\nREFERENCES \"public\".\"PartnershipRequest\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"ApplicationDocument_partnershipRequestId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "ApplicationDocument_partnershipRequestId_fkey",
+          "public",
+          "\"public\".\"ApplicationDocument\""
+        ]
+      }
+    ]
+  }
+]

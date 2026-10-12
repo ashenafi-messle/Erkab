@@ -1,0 +1,220 @@
+// use prisma-8
+
+model TrainingProgram {
+  id                  String               @id
+  slug                String               @unique
+  title               String
+  category            String
+  duration            String
+  delivery            String
+  scholarship         Boolean              @default(true)
+  image               String
+  imageAlt            String
+  summary             String
+  description         String
+  skills              String
+  modules             String
+  careerPaths         String
+  prerequisites       String
+  isPublished         Boolean              @default(true)
+  studentApplications StudentApplication[]
+  createdAt           TimestamptzString    @default(now())
+  updatedAt           temporal.updatedAtString()
+}
+
+model StudentApplication {
+  id                  String                @id
+  referenceNumber     String                @unique
+  fullName            String
+  gender              String
+  age                 Int
+  classCompletionYear String
+  telegramPhone       String
+  email               String
+  status              String                @default("PENDING")
+  programId           String
+  program             TrainingProgram       @relation(fields: [programId], references: [id])
+  documents           ApplicationDocument[]
+  reviews             ApplicationReview[]
+  createdAt           TimestamptzString     @default(now())
+  updatedAt           temporal.updatedAtString()
+}
+
+model TrainerApplication {
+  id                String                @id
+  referenceNumber   String                @unique
+  fullName          String
+  email             String
+  telegramPhone     String
+  expertiseTrack    String
+  yearsOfExperience String
+  portfolioUrl      String?
+  teachingStatement String
+  status            String                @default("PENDING")
+  documents         ApplicationDocument[]
+  reviews           ApplicationReview[]
+  createdAt         TimestamptzString     @default(now())
+  updatedAt         temporal.updatedAtString()
+}
+
+model TutorApplication {
+  id                     String                @id
+  referenceNumber        String                @unique
+  studentOrApplicantName String
+  parentOrContactPhone   String
+  email                  String?
+  gradeLevel             String
+  subjects               String
+  deliveryPreference     String
+  locationDetails        String?
+  qualifications         String?
+  experience             String?
+  hourlyRate             String?
+  status                 String                @default("PENDING")
+  documents              ApplicationDocument[]
+  reviews                ApplicationReview[]
+  payments               TutoringPayment[]
+  createdAt              TimestamptzString     @default(now())
+  updatedAt              temporal.updatedAtString()
+}
+
+model TutoringPayment {
+  id                 String            @id
+  paymentReference   String            @unique
+  tutorApplicationId String
+  tutorApplication   TutorApplication  @relation(fields: [tutorApplicationId], references: [id])
+  amount             Int
+  currency           String            @default("ETB")
+  status             String            @default("PENDING")
+  paymentMode        String            @default("DEMO")
+  transactionId      String?           @unique
+  createdAt          TimestamptzString @default(now())
+  updatedAt          temporal.updatedAtString()
+}
+
+model ApplicationDocument {
+  id                     String              @id
+  category               String
+  originalFilename       String
+  fileType               String
+  fileSize               Int
+  cloudinaryPublicId     String
+  cloudinarySecureUrl    String
+  cloudinaryResourceType String              @default("raw")
+  cloudinaryDeliveryType String              @default("authenticated")
+  studentApplicationId   String?
+  studentApplication     StudentApplication? @relation(fields: [studentApplicationId], references: [id])
+  trainerApplicationId   String?
+  trainerApplication     TrainerApplication? @relation(fields: [trainerApplicationId], references: [id])
+  tutorApplicationId     String?
+  tutorApplication       TutorApplication?   @relation(fields: [tutorApplicationId], references: [id])
+  partnershipRequestId   String?
+  partnershipRequest     PartnershipRequest? @relation(fields: [partnershipRequestId], references: [id])
+  createdAt              TimestamptzString   @default(now())
+}
+
+model ApplicationReview {
+  id                   String              @id
+  reviewerId           String
+  reviewerName         String
+  decision             String
+  notes                String?
+  studentApplicationId String?
+  studentApplication   StudentApplication? @relation(fields: [studentApplicationId], references: [id])
+  trainerApplicationId String?
+  trainerApplication   TrainerApplication? @relation(fields: [trainerApplicationId], references: [id])
+  tutorApplicationId   String?
+  tutorApplication     TutorApplication?   @relation(fields: [tutorApplicationId], references: [id])
+  createdAt            TimestamptzString   @default(now())
+}
+
+model PartnershipRequest {
+  id               String                @id
+  reference        String                @unique
+  organizationName String
+  organizationType String
+  contactPerson    String
+  email            String
+  phone            String
+  country          String?
+  city             String?
+  partnershipType  String
+  proposal         String
+  status           String                @default("PENDING")
+  reviewNotes      String?
+  reviewedBy       String?
+  reviewedAt       TimestamptzString?
+  documents        ApplicationDocument[]
+  createdAt        TimestamptzString     @default(now())
+  updatedAt        temporal.updatedAtString()
+}
+
+model DonationCampaign {
+  id              String            @id
+  slug            String            @unique
+  title           String
+  description     String
+  imageAssetId    String?
+  imageUrl        String?
+  goalAmountMinor Int?
+  currency        String            @default("ETB")
+  isPublished     Boolean           @default(true)
+  startsAt        TimestamptzString?
+  endsAt          TimestamptzString?
+  donations       Donation[]
+  createdAt       TimestamptzString @default(now())
+  updatedAt       temporal.updatedAtString()
+}
+
+model Donation {
+  id          String            @id
+  reference   String            @unique
+  campaignId  String?
+  campaign    DonationCampaign? @relation(fields: [campaignId], references: [id])
+  donorName   String?
+  email       String
+  phone       String?
+  isAnonymous Boolean           @default(false)
+  amountMinor Int
+  currency    String            @default("ETB")
+  message     String?
+  status      String            @default("PENDING_PAYMENT")
+  payments    DonationPayment[]
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+}
+
+model DonationPayment {
+  id                    String            @id
+  reference             String            @unique
+  donationId            String
+  donation              Donation          @relation(fields: [donationId], references: [id])
+  provider              String            @default("DEMO")
+  mode                  String            @default("DEMO")
+  amountMinor           Int
+  currency              String            @default("ETB")
+  status                String            @default("PENDING")
+  idempotencyKey        String?           @unique
+  providerTransactionId String?           @unique
+  failureCode           String?
+  failureMessage        String?
+  verifiedAt            TimestamptzString?
+  createdAt             TimestamptzString @default(now())
+  updatedAt             temporal.updatedAtString()
+}
+
+model NewsArticle {
+  id                String            @id
+  slug              String            @unique
+  title             String
+  excerpt           String
+  content           String
+  coverImageAssetId String?
+  coverImageUrl     String?
+  category          String            @default("General")
+  status            String            @default("DRAFT")
+  publishedAt       TimestamptzString?
+  authorName        String?
+  createdAt         TimestamptzString @default(now())
+  updatedAt         temporal.updatedAtString()
+}
