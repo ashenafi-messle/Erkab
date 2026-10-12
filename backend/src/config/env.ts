@@ -9,7 +9,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(5000),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   DIRECT_URL: z.string().optional(),
-  CORS_ORIGINS: z.string().default('http://localhost:3000,http://127.0.0.1:3000'),
+  CORS_ORIGINS: z.string().default('http://localhost:3000,http://127.0.0.1:3000,https://erkab-website.vercel.app,https://erkab.org,https://www.erkab.org'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   CLOUDINARY_CLOUD_NAME: z.string().default('YOUR_CLOUD_NAME'),
   CLOUDINARY_API_KEY: z.string().default('YOUR_API_KEY'),

@@ -14,24 +14,40 @@ import healthRoutes from './core/routes/health.routes';
 
 const app = express();
 
-// Security headers
-app.use(helmet());
-
-// CORS configuration
+// Security headers (allow cross-origin for REST API consumers)
 app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
-      if (!origin || corsOriginsList.includes(origin) || corsOriginsList.includes('*')) {
-        return callback(null, true);
-      }
-      return callback(new Error(`Origin '${origin}' not allowed by CORS policy`));
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
+
+// Dynamic origin matcher supporting Vercel and production domains
+const isAllowedOrigin = (origin: string): boolean => {
+  if (corsOriginsList.includes(origin) || corsOriginsList.includes('*')) return true;
+  if (origin.includes('localhost') || origin.includes('127.0.0.1')) return true;
+  if (origin.endsWith('erkab.org') || origin.endsWith('.erkab.org')) return true;
+  if (origin.endsWith('.vercel.app')) return true;
+  return false;
+};
+
+// CORS configuration
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+    if (!origin || isAllowedOrigin(origin)) {
+      return callback(null, true);
+    }
+    logger.warn({ origin }, 'Origin not allowed by CORS policy');
+    return callback(null, false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Disposition'],
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
 
 // Logging middleware
 app.use(
