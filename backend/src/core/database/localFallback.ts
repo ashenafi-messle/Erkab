@@ -1,10 +1,18 @@
 import path from 'path';
 import { DatabaseSync } from 'node:sqlite';
 import { logger } from '../logging/logger';
+import { hashPassword } from '../utils/authSecurity';
 
 // Persistent SQLite database file for reliable local degraded/offline operations
 const dbPath = path.resolve(process.cwd(), 'dev.sqlite');
 export const localDb = new DatabaseSync(dbPath);
+
+try {
+  localDb.exec('PRAGMA journal_mode = WAL;');
+  localDb.exec('PRAGMA busy_timeout = 5000;');
+} catch {
+  // Ignore pragma setup errors in memory-only or restricted modes
+}
 
 // Register PostgreSQL compatibility functions
 localDb.function('NOW', () => new Date().toISOString());
@@ -209,6 +217,56 @@ export function initializeLocalSchema() {
       createdAt TEXT,
       updatedAt TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS AdminUser (
+      id TEXT PRIMARY KEY,
+      email TEXT UNIQUE,
+      passwordHash TEXT,
+      name TEXT,
+      role TEXT DEFAULT 'SUB_ADMIN',
+      permissions TEXT DEFAULT '[]',
+      status TEXT DEFAULT 'ACTIVE',
+      lastLoginAt TEXT,
+      createdAt TEXT,
+      updatedAt TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS AdminAuditLog (
+      id TEXT PRIMARY KEY,
+      adminUserId TEXT,
+      adminName TEXT,
+      action TEXT,
+      resource TEXT,
+      details TEXT,
+      ipAddress TEXT,
+      createdAt TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS SupportTicket (
+      id TEXT PRIMARY KEY,
+      ticketNumber TEXT UNIQUE,
+      requesterName TEXT,
+      email TEXT,
+      category TEXT DEFAULT 'GENERAL',
+      subject TEXT,
+      message TEXT,
+      status TEXT DEFAULT 'OPEN',
+      priority TEXT DEFAULT 'NORMAL',
+      createdAt TEXT,
+      updatedAt TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS SystemIncident (
+      id TEXT PRIMARY KEY,
+      title TEXT,
+      service TEXT,
+      severity TEXT DEFAULT 'MEDIUM',
+      status TEXT DEFAULT 'INVESTIGATING',
+      description TEXT,
+      resolvedAt TEXT,
+      createdAt TEXT,
+      updatedAt TEXT
+    );
   `);
 
   seedInitialDataIfEmpty();
@@ -321,6 +379,144 @@ Each workstation is configured with modern development tooling, dual-monitor set
     for (const p of PROGRAMS) {
       insertProg.run(p.id, p.slug, p.title, p.category, p.duration, p.delivery, p.image, p.imageAlt, p.summary, p.description, p.skills, p.modules, p.careerPaths, p.prerequisites);
     }
+  }
+
+  // 4. Seed Admin Users (Super Admin and Sub Admin)
+  const adminCountStmt = localDb.prepare('SELECT COUNT(*) as count FROM AdminUser');
+  const adminCount = (adminCountStmt.get() as any)?.count || 0;
+  if (adminCount === 0) {
+    const insertAdmin = localDb.prepare(`
+      INSERT INTO AdminUser (id, email, passwordHash, name, role, permissions, status, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', NOW(), NOW())
+    `);
+
+    // Super Admin: superadmin@erkab.org / Erkab@SuperAdmin2026!
+    const superAdminHash = hashPassword('Erkab@SuperAdmin2026!');
+    insertAdmin.run(
+      'usr-super-admin-01',
+      'superadmin@erkab.org',
+      superAdminHash,
+      'Erkab Executive Director',
+      'SUPER_ADMIN',
+      JSON.stringify(['*'])
+    );
+
+    // Development Super Admin: superadmin@erkab.local / Erkab@DevSuper2026!
+    const devSuperHash = hashPassword('Erkab@DevSuper2026!');
+    insertAdmin.run(
+      'usr-dev-superadmin',
+      'superadmin@erkab.local',
+      devSuperHash,
+      'Erkab Super Administrator (Local)',
+      'SUPER_ADMIN',
+      JSON.stringify(['*'])
+    );
+
+    // Sub Admin: subadmin@erkab.org / Erkab@SubAdmin2026!
+    const subAdminHash = hashPassword('Erkab@SubAdmin2026!');
+    insertAdmin.run(
+      'usr-sub-admin-01',
+      'subadmin@erkab.org',
+      subAdminHash,
+      'Erkab Operations Specialist',
+      'SUB_ADMIN',
+      JSON.stringify([
+        'security:read',
+        'support:read',
+        'support:write',
+        'monitoring:read',
+        'maintenance:read',
+        'applications:read'
+      ])
+    );
+
+    // Development Sub Admin: subadmin@erkab.local / Erkab@DevSub2026!
+    const devSubHash = hashPassword('Erkab@DevSub2026!');
+    insertAdmin.run(
+      'usr-dev-subadmin',
+      'subadmin@erkab.local',
+      devSubHash,
+      'Erkab Operations Specialist (Local)',
+      'SUB_ADMIN',
+      JSON.stringify([
+        'security:read',
+        'support:read',
+        'support:write',
+        'monitoring:read',
+        'maintenance:read',
+        'applications:read'
+      ])
+    );
+  }
+
+  // 5. Seed Support Tickets
+  const ticketCountStmt = localDb.prepare('SELECT COUNT(*) as count FROM SupportTicket');
+  const ticketCount = (ticketCountStmt.get() as any)?.count || 0;
+  if (ticketCount === 0) {
+    const insertTicket = localDb.prepare(`
+      INSERT INTO SupportTicket (id, ticketNumber, requesterName, email, category, subject, message, status, priority, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+    `);
+    insertTicket.run(
+      'tkt-001',
+      'TKT-2026-001',
+      'Bethlehem Tadesse',
+      'bethlehem.t@gmail.com',
+      'ADMISSIONS',
+      'Inquiry on Web Development Lab Requirements',
+      'Hello, I would like to confirm if personal laptops are required on the first week of in-person training in Gondar.',
+      'OPEN',
+      'NORMAL'
+    );
+    insertTicket.run(
+      'tkt-002',
+      'TKT-2026-002',
+      'Dawit Alemu',
+      'dawit.alemu@org.et',
+      'TECHNICAL',
+      'Assistance with Certificate Upload',
+      'I encountered a file format notice while uploading my high school leaving certificate PDF. Please advise.',
+      'IN_PROGRESS',
+      'HIGH'
+    );
+  }
+
+  // 6. Seed System Incidents
+  const incidentCountStmt = localDb.prepare('SELECT COUNT(*) as count FROM SystemIncident');
+  const incidentCount = (incidentCountStmt.get() as any)?.count || 0;
+  if (incidentCount === 0) {
+    const insertIncident = localDb.prepare(`
+      INSERT INTO SystemIncident (id, title, service, severity, status, description, resolvedAt, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+    `);
+    insertIncident.run(
+      'inc-001',
+      'Scheduled Neon DB Connection Pool Maintenance',
+      'PostgreSQL Database',
+      'LOW',
+      'RESOLVED',
+      'Routine failover verification completed with 100% operational uptime preserved via local resilient engine.',
+      new Date().toISOString()
+    );
+  }
+
+  // 7. Seed Initial Audit Logs
+  const auditCountStmt = localDb.prepare('SELECT COUNT(*) as count FROM AdminAuditLog');
+  const auditCount = (auditCountStmt.get() as any)?.count || 0;
+  if (auditCount === 0) {
+    const insertAudit = localDb.prepare(`
+      INSERT INTO AdminAuditLog (id, adminUserId, adminName, action, resource, details, ipAddress, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+    `);
+    insertAudit.run(
+      'aud-001',
+      'usr-super-admin-01',
+      'System Provisioning',
+      'INITIALIZE_SYSTEM',
+      'AuthEngine',
+      'Default security roles (SUPER_ADMIN, SUB_ADMIN) provisioned.',
+      '127.0.0.1'
+    );
   }
 }
 

@@ -9,6 +9,7 @@
     "start": "tsx src/server.ts",
     "test": "vitest run",
     "seed": "tsx src/prisma/seed.ts",
+    "seed:admin": "tsx src/prisma/seedAdmin.ts",
     "contract:emit": "prisma contract emit",
     "migration:plan": "prisma migration plan",
     "db:migrate": "prisma db migrate"

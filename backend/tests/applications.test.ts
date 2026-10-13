@@ -227,5 +227,151 @@ describe('Applications Endpoints', () => {
       expect(res.body.success).toBe(true);
       expect(Array.isArray(res.body.data)).toBe(true);
     });
+
+    it('supports search query and document indicators', async () => {
+      const res = await request(app)
+        .get('/api/v1/admin/applications/students?search=Tadesse')
+        .set('Authorization', 'Bearer test_admin_token_2026');
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      if (res.body.data.length > 0) {
+        expect(res.body.data[0].documentCount).toBeDefined();
+      }
+    });
+
+    it('retrieves detailed student application with signed document URLs', async () => {
+      const listRes = await request(app)
+        .get('/api/v1/admin/applications/students')
+        .set('Authorization', 'Bearer test_admin_token_2026');
+
+      expect(listRes.status).toBe(200);
+      const student = listRes.body.data[0];
+      expect(student).toBeDefined();
+
+      const detailRes = await request(app)
+        .get(`/api/v1/admin/applications/students/${student.id}`)
+        .set('Authorization', 'Bearer test_admin_token_2026');
+
+      expect(detailRes.status).toBe(200);
+      expect(detailRes.body.success).toBe(true);
+      expect(detailRes.body.data.application).toBeDefined();
+      expect(Array.isArray(detailRes.body.data.documents)).toBe(true);
+
+      // Verify signed document review URLs
+      if (detailRes.body.data.documents.length > 0) {
+        const doc = detailRes.body.data.documents[0];
+        expect(doc.reviewUrl).toBeDefined();
+        expect(doc.reviewUrl).toContain('cloudinary.com');
+
+        // Test secure document access endpoint
+        const docAccessRes = await request(app)
+          .get(`/api/v1/admin/applications/students/${student.id}/documents/${doc.id}/access`)
+          .set('Authorization', 'Bearer test_admin_token_2026');
+
+        expect(docAccessRes.status).toBe(200);
+        expect(docAccessRes.body.success).toBe(true);
+        expect(docAccessRes.body.document.accessUrl).toBeDefined();
+
+        // Test secure document streaming view endpoint
+        const viewRes = await request(app)
+          .get(`/api/v1/admin/applications/students/${student.id}/documents/${doc.id}/view`)
+          .set('Authorization', 'Bearer test_admin_token_2026');
+
+        expect(viewRes.status).toBe(200);
+        expect(viewRes.headers['content-disposition']).toContain('inline');
+
+        // Test secure document download endpoint with query token
+        const downloadRes = await request(app)
+          .get(`/api/v1/admin/applications/students/${student.id}/documents/${doc.id}/download?token=test_admin_token_2026`);
+
+        expect(downloadRes.status).toBe(200);
+        expect(downloadRes.headers['content-disposition']).toContain('attachment');
+      }
+    });
+
+    it('rejects document access if document does not belong to the requested application', async () => {
+      const listRes = await request(app)
+        .get('/api/v1/admin/applications/students')
+        .set('Authorization', 'Bearer test_admin_token_2026');
+
+      const student = listRes.body.data[0];
+
+      const res = await request(app)
+        .get(`/api/v1/admin/applications/students/${student.id}/documents/non-existent-doc-id/access`)
+        .set('Authorization', 'Bearer test_admin_token_2026');
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('updates application status with review notes and records audit trail', async () => {
+      const listRes = await request(app)
+        .get('/api/v1/admin/applications/students')
+        .set('Authorization', 'Bearer test_admin_token_2026');
+
+      const student = listRes.body.data[0];
+
+      const patchRes = await request(app)
+        .patch(`/api/v1/admin/applications/students/${student.id}/status`)
+        .set('Authorization', 'Bearer test_admin_token_2026')
+        .send({
+          status: 'APPROVED',
+          notes: 'Meets academic requirements and demonstrated outstanding project proposal.',
+        });
+
+      expect(patchRes.status).toBe(200);
+      expect(patchRes.body.success).toBe(true);
+      expect(patchRes.body.status).toBe('APPROVED');
+
+      // Verify status persisted
+      const detailRes = await request(app)
+        .get(`/api/v1/admin/applications/students/${student.id}`)
+        .set('Authorization', 'Bearer test_admin_token_2026');
+
+      expect(detailRes.body.data.application.status).toBe('APPROVED');
+      expect(detailRes.body.data.reviews.length).toBeGreaterThan(0);
+      expect(detailRes.body.data.reviews[0].decision).toBe('APPROVED');
+      expect(detailRes.body.data.reviews[0].notes).toContain('Meets academic requirements');
+    });
+
+    it('prevents duplicate pending student submissions idempotently', async () => {
+      const res = await request(app)
+        .post('/api/v1/web/applications/students')
+        .field('fullName', 'Tadesse Gebre Duplicate')
+        .field('gender', 'Male')
+        .field('age', '24')
+        .field('classCompletionYear', '2025')
+        .field('telegramPhone', '+251911445566')
+        .field('email', 'tadesse.duplicate@erkab.org')
+        .field('selectedProgramId', 'web-development')
+        .attach('educationCertificate', validPdfBuffer, 'degree.pdf')
+        .attach('nationalId', validPdfBuffer, 'kebele_id.pdf')
+        .attach('ideaProposal', validPdfBuffer, 'project_proposal.pdf');
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      const initialRef = res.body.referenceNumber;
+
+      // Second immediate submission with same email & program
+      const dupRes = await request(app)
+        .post('/api/v1/web/applications/students')
+        .field('fullName', 'Tadesse Gebre Duplicate')
+        .field('gender', 'Male')
+        .field('age', '24')
+        .field('classCompletionYear', '2025')
+        .field('telegramPhone', '+251911445566')
+        .field('email', 'tadesse.duplicate@erkab.org')
+        .field('selectedProgramId', 'web-development')
+        .attach('educationCertificate', validPdfBuffer, 'degree.pdf')
+        .attach('nationalId', validPdfBuffer, 'kebele_id.pdf')
+        .attach('ideaProposal', validPdfBuffer, 'project_proposal.pdf');
+
+      expect(dupRes.status).toBe(201);
+      expect(dupRes.body.success).toBe(true);
+      expect(dupRes.body.referenceNumber).toBe(initialRef);
+      expect(dupRes.body.message).toContain('already submitted');
+    }, 15000);
   });
 });

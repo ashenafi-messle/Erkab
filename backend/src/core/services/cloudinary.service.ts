@@ -222,15 +222,33 @@ export class CloudinaryService {
   public static generateSignedReviewUrl(
     publicId: string,
     resourceType = 'raw',
-    format = 'pdf'
+    format?: string
   ): string {
     if (!this.isConfigured() || publicId.startsWith('mock_')) {
       return `https://res.cloudinary.com/mock-erkab/${publicId}`;
     }
 
-    // Generate signed authenticated delivery URL expiring in 1 hour
+    // Generate signed authenticated download URL expiring in 1 hour
     const expiresAt = Math.floor(Date.now() / 1000) + 3600;
+
+    let ext = format;
+    if (!ext) {
+      if (publicId.includes('.')) {
+        ext = publicId.split('.').pop()?.toLowerCase();
+      } else {
+        ext = resourceType === 'raw' ? 'pdf' : 'jpg';
+      }
+    }
+
     try {
+      // Authenticated raw and image assets require private_download_url
+      return cloudinary.utils.private_download_url(publicId, ext || '', {
+        resource_type: resourceType as any,
+        type: 'authenticated',
+        expires_at: expiresAt,
+      });
+    } catch (err: any) {
+      logger.warn({ publicId, error: err?.message }, 'Failed to generate private download URL, falling back');
       return cloudinary.url(publicId, {
         resource_type: resourceType as any,
         type: 'authenticated',
@@ -238,12 +256,40 @@ export class CloudinaryService {
         expires_at: expiresAt,
         secure: true,
       });
-    } catch {
-      return cloudinary.utils.private_download_url(publicId, format, {
-        resource_type: resourceType as any,
-        type: 'authenticated',
-        expires_at: expiresAt,
-      });
     }
+  }
+
+  public static async fetchAssetStream(
+    publicId: string,
+    resourceType = 'raw',
+    format?: string
+  ): Promise<{ stream: any; statusCode: number; headers: Record<string, any> }> {
+    const downloadUrl = this.generateSignedReviewUrl(publicId, resourceType, format);
+
+    if (downloadUrl.startsWith('https://res.cloudinary.com/mock-erkab/')) {
+      const { Readable } = await import('stream');
+      const mockStream = Readable.from([
+        Buffer.from('%PDF-1.4\n%âãÏÓ\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF'),
+      ]);
+      return {
+        stream: mockStream,
+        statusCode: 200,
+        headers: {
+          'content-type': 'application/pdf',
+          'content-disposition': 'inline; filename="mock_document.pdf"',
+        },
+      };
+    }
+
+    const https = await import('https');
+    return new Promise((resolve, reject) => {
+      https.get(downloadUrl, (streamRes) => {
+        resolve({
+          stream: streamRes,
+          statusCode: streamRes.statusCode || 200,
+          headers: streamRes.headers,
+        });
+      }).on('error', (err) => reject(err));
+    });
   }
 }

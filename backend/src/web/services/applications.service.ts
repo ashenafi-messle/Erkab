@@ -68,7 +68,23 @@ export class ApplicationsService {
       );
     }
 
-    // 2. Verify required files are provided
+    // 2. Prevent duplicate pending submissions
+    const normalizedEmail = data.email.trim().toLowerCase();
+    const existingPending = await queryOne<{ id: string; referenceNumber: string }>(
+      `SELECT "id", "referenceNumber" FROM "public"."StudentApplication"
+       WHERE LOWER("email") = $1 AND "programId" = $2 AND "status" IN ('PENDING', 'UNDER_REVIEW')
+       LIMIT 1`,
+      [normalizedEmail, program.id]
+    );
+    if (existingPending) {
+      return {
+        success: true,
+        referenceNumber: existingPending.referenceNumber,
+        message: 'Your scholarship application for this program is already submitted and currently under review.',
+      };
+    }
+
+    // 3. Verify required files are provided
     if (!files.educationCertificate) {
       throw new ValidationError('Education certificate / degree document is required.');
     }
@@ -79,7 +95,7 @@ export class ApplicationsService {
       throw new ValidationError('One-page project idea proposal is required.');
     }
 
-    // 3. Upload documents to Cloudinary
+    // 4. Upload documents to Cloudinary
     const uploadedDocs: { category: string; result: UploadedFileResult }[] = [];
 
     try {
@@ -201,6 +217,22 @@ export class ApplicationsService {
       throw new ValidationError('Resume / CV document (PDF) is required.');
     }
 
+    // Prevent duplicate pending trainer submissions
+    const normalizedEmail = data.email.trim().toLowerCase();
+    const existingPending = await queryOne<{ id: string; referenceNumber: string }>(
+      `SELECT "id", "referenceNumber" FROM "public"."TrainerApplication"
+       WHERE LOWER("email") = $1 AND "status" IN ('PENDING', 'UNDER_REVIEW')
+       LIMIT 1`,
+      [normalizedEmail]
+    );
+    if (existingPending) {
+      return {
+        success: true,
+        referenceNumber: existingPending.referenceNumber,
+        message: 'Your trainer application is already submitted and currently under review.',
+      };
+    }
+
     let uploadedDoc: UploadedFileResult | null = null;
 
     try {
@@ -302,6 +334,36 @@ export class ApplicationsService {
     const subjectsString = Array.isArray(data.subjects)
       ? data.subjects.join(', ')
       : data.subjects;
+
+    // Prevent duplicate pending tutor requests with same phone/student
+    const contactPhone = data.parentOrContactPhone.trim();
+    const existingPending = await queryOne<{
+      id: string;
+      referenceNumber: string;
+      paymentReference?: string;
+      amount?: number;
+      currency?: string;
+    }>(
+      `SELECT t."id", t."referenceNumber", p."paymentReference", p."amount", p."currency" 
+       FROM "public"."TutorApplication" t
+       LEFT JOIN "public"."TutoringPayment" p ON t."id" = p."tutorApplicationId"
+       WHERE t."parentOrContactPhone" = $1 AND LOWER(t."studentOrApplicantName") = LOWER($2) 
+         AND t."status" IN ('PENDING', 'PENDING_PAYMENT')
+         AND p."paymentReference" IS NOT NULL
+       LIMIT 1`,
+      [contactPhone, studentName.trim()]
+    );
+    if (existingPending) {
+      return {
+        success: true,
+        referenceNumber: existingPending.referenceNumber,
+        paymentReference: existingPending.paymentReference,
+        paymentUrl: `/tutoring/payment/${existingPending.paymentReference}`,
+        amount: existingPending.amount || this.calculateTutoringFee(data.gradeLevel),
+        currency: existingPending.currency || 'ETB',
+        message: 'A tutoring request for this student and contact phone is already under review.',
+      };
+    }
 
     let uploadedDoc: UploadedFileResult | null = null;
     if (files?.resumeFile) {

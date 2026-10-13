@@ -10,5 +10,6 @@ router.get('/', AdminPartnershipsController.list);
 router.get('/:id', AdminPartnershipsController.getDetail);
 router.get('/:id/license', AdminPartnershipsController.getLicenseDownload);
 router.post('/:id/review', AdminPartnershipsController.review);
+router.patch('/:id/status', AdminPartnershipsController.review);
 
 export default router;

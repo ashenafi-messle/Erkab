@@ -50,4 +50,16 @@ export class AdminNewsController {
       next(err);
     }
   }
+
+  public static async togglePublish(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = req.params.id as string;
+      const isPublished = Boolean(req.body.isPublished);
+      const newStatus = isPublished ? 'PUBLISHED' : 'DRAFT';
+      const result = await NewsService.updateArticle(id, { status: newStatus as any });
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
 }

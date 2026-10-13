@@ -218,3 +218,53 @@ model NewsArticle {
   createdAt         TimestamptzString @default(now())
   updatedAt         temporal.updatedAtString()
 }
+
+model AdminUser {
+  id           String            @id
+  email        String            @unique
+  passwordHash String
+  name         String
+  role         String            @default("SUB_ADMIN")
+  permissions  String            @default("[]")
+  status       String            @default("ACTIVE")
+  lastLoginAt  TimestamptzString?
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+}
+
+model AdminAuditLog {
+  id          String            @id
+  adminUserId String?
+  adminName   String
+  action      String
+  resource    String
+  details     String?
+  ipAddress   String?
+  createdAt   TimestamptzString @default(now())
+}
+
+model SupportTicket {
+  id            String            @id
+  ticketNumber  String            @unique
+  requesterName String
+  email         String
+  category      String            @default("GENERAL")
+  subject       String
+  message       String
+  status        String            @default("OPEN")
+  priority      String            @default("NORMAL")
+  createdAt     TimestamptzString @default(now())
+  updatedAt     temporal.updatedAtString()
+}
+
+model SystemIncident {
+  id          String            @id
+  title       String
+  service     String
+  severity    String            @default("MEDIUM")
+  status      String            @default("INVESTIGATING")
+  description String
+  resolvedAt  TimestamptzString?
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+}

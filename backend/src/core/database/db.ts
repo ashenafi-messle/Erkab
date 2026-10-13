@@ -7,24 +7,26 @@ export const pool = new Pool({
   connectionString: env.DATABASE_URL || env.DIRECT_URL,
   ssl: { rejectUnauthorized: false },
   max: 10,
-  idleTimeoutMillis: 15000,
-  connectionTimeoutMillis: 3000, // Short 3s timeout to avoid blocking frontend
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000, // 10s connection timeout for Neon serverless wake-up
 });
 
 let isPostgresHealthy = false;
 
 pool.on('error', (err) => {
-  logger.warn({ err: err.message }, 'Remote database pool encountered an error. Operating with resilient local fallback.');
+  logger.warn({ err: err.message }, 'Remote database pool encountered an error.');
   isPostgresHealthy = false;
 });
 
 export async function query<T = any>(text: string, params?: any[]): Promise<T[]> {
-  if (isPostgresHealthy) {
+  // Always attempt primary PostgreSQL first if DATABASE_URL is configured
+  if (env.DATABASE_URL) {
     try {
       const res = await pool.query(text, params);
+      isPostgresHealthy = true;
       return res.rows;
     } catch (err: any) {
-      logger.warn({ err: err.message }, 'PostgreSQL query failed, seamlessly falling back to local storage.');
+      logger.warn({ err: err.message }, 'PostgreSQL query failed, resiliently falling back to local storage.');
       isPostgresHealthy = false;
     }
   }
@@ -41,13 +43,14 @@ export async function queryOne<T = any>(text: string, params?: any[]): Promise<T
 export async function transaction<T>(
   callback: (client: any) => Promise<T>
 ): Promise<T> {
-  if (isPostgresHealthy) {
+  if (env.DATABASE_URL) {
     let client: PoolClient | null = null;
     try {
       client = await pool.connect();
       await client.query('BEGIN');
       const result = await callback(client);
       await client.query('COMMIT');
+      isPostgresHealthy = true;
       return result;
     } catch (err: any) {
       if (client) {
@@ -55,7 +58,7 @@ export async function transaction<T>(
           await client.query('ROLLBACK');
         } catch {}
       }
-      logger.warn({ err: err.message }, 'PostgreSQL transaction failed, seamlessly falling back to local storage transaction.');
+      logger.warn({ err: err.message }, 'PostgreSQL transaction failed, resiliently falling back to local storage transaction.');
       isPostgresHealthy = false;
     } finally {
       if (client) {
@@ -72,11 +75,11 @@ export async function checkDatabaseHealth(): Promise<boolean> {
   try {
     const res = await pool.query('SELECT 1 as health');
     isPostgresHealthy = res.rows.length > 0 && res.rows[0].health === 1;
-    return true;
-  } catch {
+    return isPostgresHealthy;
+  } catch (err: any) {
     isPostgresHealthy = false;
-    logger.info('Remote database unavailable (network/port blocked or sleeping). Resilient local storage is active.');
-    return true; // Local storage is healthy and ready to serve requests!
+    logger.warn({ err: err.message }, 'Remote database check failed. Operating with resilient local fallback.');
+    return false;
   }
 }
 
