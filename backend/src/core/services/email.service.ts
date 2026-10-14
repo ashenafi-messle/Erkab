@@ -43,15 +43,24 @@ export class EmailService {
     const login = (env.BREVO_SMTP_LOGIN || '').trim();
     const key = (env.BREVO_SMTP_KEY || '').trim();
     const sender = (env.BREVO_SENDER_EMAIL || '').trim();
+    const apiKey = (env.BREVO_API_KEY || '').trim();
 
-    return (
+    const hasSmtp =
       Boolean(login) &&
       login !== 'YOUR_ROTATED_BREVO_SMTP_LOGIN' &&
       Boolean(key) &&
-      key !== 'YOUR_ROTATED_BREVO_SMTP_KEY' &&
+      key !== 'YOUR_ROTATED_BREVO_SMTP_KEY';
+
+    const hasApi =
+      Boolean(apiKey) &&
+      apiKey !== 'YOUR_BREVO_API_KEY' &&
+      apiKey.startsWith('xkeysib-');
+
+    const hasSender =
       Boolean(sender) &&
-      sender !== 'YOUR_VERIFIED_SENDER_EMAIL'
-    );
+      sender !== 'YOUR_VERIFIED_SENDER_EMAIL';
+
+    return (hasSmtp || hasApi) && hasSender;
   }
 
   /**
@@ -95,14 +104,101 @@ export class EmailService {
         tls: {
           rejectUnauthorized: true,
         },
+        connectionTimeout: 8000,
+        greetingTimeout: 5000,
+        socketTimeout: 8000,
       });
     }
     return this.transporter;
   }
 
   /**
+   * Dispatches email using Brevo's official HTTPS REST API (Port 443).
+   * This completely bypasses cloud firewall restrictions on Render Free Tier where SMTP ports (25, 465, 587) are blocked.
+   */
+  public static async sendViaBrevoApi(options: SendEmailOptions): Promise<SendEmailResult & { isAuthError?: boolean }> {
+    const apiKey = (env.BREVO_API_KEY || '').trim();
+    if (!apiKey || apiKey === 'YOUR_BREVO_API_KEY') {
+      return { success: false, error: 'BREVO_API_KEY is not configured in environment variables.' };
+    }
+
+    const senderName = env.BREVO_SENDER_NAME || 'Erkab Skills Training Organization';
+    const senderEmail = (env.BREVO_SENDER_EMAIL || '').trim();
+
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': apiKey,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          sender: {
+            name: senderName,
+            email: senderEmail,
+          },
+          to: [
+            {
+              email: options.to,
+            },
+          ],
+          subject: options.subject,
+          htmlContent: options.html,
+          textContent: options.text,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timer);
+
+      const data: any = await response.json().catch(() => ({}));
+
+      if (response.ok && data?.messageId) {
+        logger.info(
+          { messageId: data.messageId, to: options.to, transport: 'brevo-https-api' },
+          'Successfully dispatched decision email via Brevo HTTPS REST API (Port 443)'
+        );
+        return {
+          success: true,
+          messageId: data.messageId,
+        };
+      }
+
+      const errorMsg = data?.message || data?.error || `Brevo API returned status ${response.status}`;
+      const isAuthError = response.status === 401 || /unauthorized|invalid api key|key not found/i.test(errorMsg);
+
+      logger.warn(
+        { error: errorMsg, isAuthError, status: response.status },
+        'Brevo HTTPS REST API returned error'
+      );
+
+      return {
+        success: false,
+        error: errorMsg,
+        isAuthError,
+      };
+    } catch (err: any) {
+      const isTimeout = err?.name === 'AbortError' || /timeout|aborted/i.test(err?.message || '');
+      const errMsg = isTimeout
+        ? 'Brevo HTTPS REST API request timed out after 10000ms'
+        : String(err?.message || 'Failed to connect to Brevo HTTPS API');
+
+      logger.error({ error: errMsg }, 'Brevo HTTPS REST API network exception');
+
+      return {
+        success: false,
+        error: errMsg,
+      };
+    }
+  }
+
+  /**
    * Sanitizes any SMTP or transmission error to avoid leaking secrets,
-   * while classifying authentication failures (535 5.7.8).
+   * while classifying authentication failures (535 5.7.8) and connection timeouts.
    */
   public static sanitizeError(err: any): { message: string; isAuthError: boolean; code?: string | number } {
     const rawMsg = err && typeof err.message === 'string' ? err.message : String(err || 'SMTP transmission error');
@@ -112,6 +208,11 @@ export class EmailService {
       code === 535 ||
       code === 'EAUTH' ||
       /535|5\.7\.8|Authentication failed|Invalid login/i.test(rawMsg);
+
+    const isTimeout =
+      code === 'ETIMEDOUT' ||
+      code === 'ESOCKETTIMEDOUT' ||
+      /connection timeout|timed out|ETIMEDOUT/i.test(rawMsg);
 
     let safeMsg = rawMsg;
     const smtpKey = (env.BREVO_SMTP_KEY || '').trim();
@@ -124,7 +225,9 @@ export class EmailService {
     }
 
     if (isAuthError) {
-      safeMsg = `Invalid login: 535 5.7.8 Authentication failed (smtp-relay.brevo.com rejected the SMTP key). Please generate a new SMTP key from Brevo dashboard > SMTP & API > SMTP and configure BREVO_SMTP_KEY.`;
+      safeMsg = `Invalid login: 535 5.7.8 Authentication failed (smtp-relay.brevo.com rejected the SMTP key). Please configure BREVO_API_KEY in Render environment variables or generate a new SMTP key from Brevo dashboard.`;
+    } else if (isTimeout) {
+      safeMsg = `Connection timeout: Outbound SMTP ports (587, 465, 25) are blocked by the cloud hosting environment (Render Free Tier). Please add BREVO_API_KEY to your Render environment variables to deliver emails reliably via HTTPS Port 443.`;
     }
 
     return {
@@ -135,7 +238,7 @@ export class EmailService {
   }
 
   /**
-   * Non-blocking SMTP connection and authentication verification using transporter.verify().
+   * Non-blocking connection and authentication verification using Brevo API or transporter.verify().
    * Runs with a configurable timeout (default 5000ms) to ensure it never blocks indefinitely.
    */
   public static async verifySmtpConnection(timeoutMs = 5000): Promise<{
@@ -147,6 +250,7 @@ export class EmailService {
       requireTLS: boolean;
       hasLogin: boolean;
       hasKey: boolean;
+      hasApiKey?: boolean;
       hasSenderEmail: boolean;
       verified: boolean;
       isAuthError?: boolean;
@@ -158,6 +262,7 @@ export class EmailService {
     const login = (env.BREVO_SMTP_LOGIN || '').trim();
     const key = (env.BREVO_SMTP_KEY || '').trim();
     const sender = (env.BREVO_SENDER_EMAIL || '').trim();
+    const apiKey = (env.BREVO_API_KEY || '').trim();
 
     const diagnostics = {
       host: env.BREVO_SMTP_SERVER,
@@ -166,10 +271,54 @@ export class EmailService {
       requireTLS: true,
       hasLogin: Boolean(login && login !== 'YOUR_ROTATED_BREVO_SMTP_LOGIN'),
       hasKey: Boolean(key && key !== 'YOUR_ROTATED_BREVO_SMTP_KEY'),
+      hasApiKey: Boolean(apiKey && apiKey !== 'YOUR_BREVO_API_KEY' && apiKey.startsWith('xkeysib-')),
       hasSenderEmail: Boolean(sender && sender !== 'YOUR_VERIFIED_SENDER_EMAIL'),
       verified: false,
       timestamp: new Date().toISOString(),
     };
+
+    // If BREVO_API_KEY is configured, verify via Brevo HTTPS REST API (Port 443)
+    if (diagnostics.hasApiKey) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+        const res = await fetch('https://api.brevo.com/v3/account', {
+          headers: {
+            'api-key': apiKey,
+            accept: 'application/json',
+          },
+          signal: controller.signal,
+        });
+
+        clearTimeout(timer);
+
+        if (res.ok) {
+          return {
+            success: true,
+            diagnostics: {
+              ...diagnostics,
+              verified: true,
+            },
+          };
+        }
+
+        const data: any = await res.json().catch(() => ({}));
+        const isAuthError = res.status === 401;
+        return {
+          success: false,
+          diagnostics: {
+            ...diagnostics,
+            verified: false,
+            isAuthError,
+            errorCode: res.status,
+            errorMessage: data?.message || `Brevo API returned status ${res.status}`,
+          },
+        };
+      } catch (err: any) {
+        logger.warn({ error: err?.message }, 'Brevo API health verification check failed, attempting SMTP fallback');
+      }
+    }
 
     if (!diagnostics.hasLogin || !diagnostics.hasKey) {
       return {
@@ -177,7 +326,7 @@ export class EmailService {
         diagnostics: {
           ...diagnostics,
           verified: false,
-          errorMessage: 'Brevo SMTP login or key is not configured in environment variables.',
+          errorMessage: 'Brevo credentials (API key or SMTP login) are not configured in environment variables.',
         },
       };
     }
@@ -247,14 +396,29 @@ export class EmailService {
       };
     }
 
+    // Priority 1: Brevo official HTTPS REST API (Port 443)
+    // Completely bypasses cloud provider outbound SMTP port blocking on Render Free Tier
+    const apiKey = (env.BREVO_API_KEY || '').trim();
+    if (apiKey && apiKey !== 'YOUR_BREVO_API_KEY' && apiKey.startsWith('xkeysib-')) {
+      const apiResult = await this.sendViaBrevoApi(options);
+      if (apiResult.success) {
+        return apiResult;
+      }
+      logger.warn(
+        { error: apiResult.error, isAuthError: apiResult.isAuthError },
+        'Brevo HTTPS REST API attempt failed; falling back to SMTP Relay'
+      );
+    }
+
     if (!this.isConfigured()) {
-      logger.warn({ to, subject }, 'Brevo SMTP credentials not configured; skipping actual email dispatch');
+      logger.warn({ to, subject }, 'Brevo credentials not configured; skipping actual email dispatch');
       return {
         success: false,
-        error: 'Brevo SMTP credentials not configured in environment variables.',
+        error: 'Brevo credentials not configured in environment variables.',
       };
     }
 
+    // Priority 2: Brevo SMTP Relay fallback
     try {
       const transporter = this.getTransporter();
       const senderName = env.BREVO_SENDER_NAME || 'Erkab Skills Training Organization';
@@ -290,6 +454,7 @@ export class EmailService {
           port: env.BREVO_SMTP_PORT,
           hasLogin: Boolean(env.BREVO_SMTP_LOGIN),
           hasKey: Boolean(env.BREVO_SMTP_KEY),
+          hasApiKey: Boolean(env.BREVO_API_KEY),
         },
         'Failed to deliver decision email via Brevo SMTP'
       );
