@@ -26,7 +26,8 @@ const isAllowedOrigin = (origin: string): boolean => {
   if (corsOriginsList.includes(origin) || corsOriginsList.includes('*')) return true;
   if (origin.includes('localhost') || origin.includes('127.0.0.1')) return true;
   if (origin.endsWith('erkab.org') || origin.endsWith('.erkab.org')) return true;
-  if (origin.endsWith('.vercel.app')) return true;
+  if (origin.endsWith('.vercel.app') || origin.endsWith('vercel.app')) return true;
+  if (origin.endsWith('.onrender.com') || origin.endsWith('onrender.com')) return true;
   return false;
 };
 
@@ -54,7 +55,11 @@ app.use(
   pinoHttp({
     logger,
     autoLogging: {
-      ignore: (req) => req.url?.startsWith('/api/v1/health') || false,
+      ignore: (req) =>
+        req.url?.startsWith('/api/v1/health') ||
+        req.url?.startsWith('/api/health') ||
+        req.url?.startsWith('/health') ||
+        false,
     },
   })
 );
@@ -66,10 +71,26 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // Global rate limiting
 app.use(generalLimiter);
 
-// API route namespaces
-app.use('/api/v1/health', healthRoutes);
-app.use('/api/v1/web', webRoutes);
-app.use('/api/v1/admin', adminRoutes);
+// Root endpoint for status / health check ping
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    success: true,
+    service: 'Erkab Backend API',
+    status: 'ONLINE',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      web: '/api/v1/web',
+      admin: '/api/v1/admin',
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// API route namespaces with aliases (supports both /api/v1/admin and /admin prefixes)
+app.use(['/api/v1/health', '/api/health', '/health'], healthRoutes);
+app.use(['/api/v1/web', '/api/web', '/web'], webRoutes);
+app.use(['/api/v1/admin', '/api/admin', '/admin'], adminRoutes);
 
 // 404 & Centralized error handling
 app.use(notFoundHandler);

@@ -1,6 +1,14 @@
 import { ApiEnvelope } from '../types/auth';
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1').replace(/\/+$/, '');
+const getApiBaseUrl = (): string => {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (!envUrl) {
+    return 'http://localhost:5000/api/v1';
+  }
+  return envUrl.replace(/\/+$/, '');
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export class ApiError extends Error {
   statusCode: number;
@@ -40,7 +48,15 @@ export async function apiClient<T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  // Prevent duplicate prefixes if both API_BASE_URL and endpoint contain /api/v1 or /api
+  if (API_BASE_URL.endsWith('/api/v1') && cleanEndpoint.startsWith('/api/v1/')) {
+    cleanEndpoint = cleanEndpoint.substring('/api/v1'.length);
+  } else if (API_BASE_URL.endsWith('/api') && cleanEndpoint.startsWith('/api/')) {
+    cleanEndpoint = cleanEndpoint.substring('/api'.length);
+  }
+
   const url = `${API_BASE_URL}${cleanEndpoint}`;
 
   const headers: Record<string, string> = {
