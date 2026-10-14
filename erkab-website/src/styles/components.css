@@ -99,6 +99,24 @@
   box-shadow: 0 4px 15px rgba(8, 120, 185, 0.28);
 }
 
+.btn-erkab-app {
+  background-color: #ffffff;
+  color: var(--color-primary-dark);
+  border: 1.5px solid rgba(8, 120, 185, 0.35);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  box-shadow: 0 2px 6px rgba(8, 120, 185, 0.08);
+}
+
+.btn-erkab-app:hover {
+  background-color: #f0f7fc;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  box-shadow: 0 4px 14px rgba(8, 120, 185, 0.16);
+}
+
 .header-actions .btn-erkab {
   padding: 0.52rem 1.15rem;
   font-size: 0.88rem;
@@ -737,4 +755,268 @@
   justify-content: center;
   background: var(--color-bg-light);
   color: var(--color-text-muted);
+}
+
+/* Get App Modal */
+.get-app-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: getAppFadeIn 0.22s ease-out;
+}
+
+.get-app-modal-card {
+  position: relative;
+  background: #ffffff;
+  width: 100%;
+  max-width: 460px;
+  max-height: calc(100vh - 2rem);
+  border-radius: 20px;
+  box-shadow: 0 20px 45px -10px rgba(15, 43, 72, 0.3), 0 0 0 1px rgba(15, 43, 72, 0.08);
+  overflow-y: auto;
+  animation: getAppScaleUp 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-overflow-scrolling: touch;
+}
+
+.get-app-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  color: #475569;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  z-index: 10;
+}
+
+.get-app-modal-close:hover {
+  background-color: #e2e8f0;
+  color: #0f172a;
+  transform: rotate(90deg);
+}
+
+.get-app-modal-body {
+  padding: 2.25rem 2rem 2rem;
+  text-align: center;
+}
+
+.get-app-icon-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.get-app-icon-circle {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #0878b9 0%, #0f2b48 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  box-shadow: 0 10px 25px -5px rgba(8, 120, 185, 0.4);
+}
+
+.get-app-phone-icon {
+  color: #c7ff45;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.get-app-sparkle-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 24px;
+  height: 24px;
+  background: #c7ff45;
+  color: #0f2b48;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.get-app-brand-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 0.3rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0f2b48;
+}
+
+.get-app-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  padding: 0.35rem 0.9rem;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.get-app-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #3b82f6;
+  box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  animation: getAppPulse 2s infinite;
+}
+
+.get-app-modal-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #0f2b48;
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.get-app-modal-message {
+  font-size: 0.95rem;
+  color: #475569;
+  line-height: 1.6;
+  margin-bottom: 1.25rem;
+}
+
+.get-app-platforms-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  text-align: left;
+}
+
+.get-app-platforms-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.4rem;
+}
+
+.get-app-platform-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.get-app-item-status {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #0284c7;
+  background: #f0f9ff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+.get-app-web-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: #15803d;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  padding: 0.55rem 0.85rem;
+  text-align: left;
+}
+
+@keyframes getAppFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes getAppScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes getAppPulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+/* Mobile Responsiveness for Modal on narrow screens <= 480px */
+@media (max-width: 480px) {
+  .get-app-modal-body {
+    padding: 1.75rem 1.15rem 1.5rem;
+  }
+  .get-app-modal-title {
+    font-size: 1.25rem;
+  }
+  .get-app-modal-message {
+    font-size: 0.88rem;
+    line-height: 1.55;
+  }
+  .get-app-icon-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 20px;
+  }
+  .get-app-platforms-box {
+    padding: 0.75rem;
+  }
+  .get-app-platform-item {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.8rem;
+  }
 }

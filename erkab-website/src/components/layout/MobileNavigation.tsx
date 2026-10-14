@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { X, Globe, ArrowRight, ChevronDown, Heart } from 'lucide-react';
+import { X, Globe, ArrowRight, ChevronDown, Heart, Smartphone } from 'lucide-react';
 import { MAIN_NAVIGATION } from '@/lib/constants/navigation';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { LOCALE_LABELS } from '@/lib/i18n/config';
@@ -12,9 +12,10 @@ import { LOCALE_LABELS } from '@/lib/i18n/config';
 interface MobileNavigationProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenGetApp: () => void;
 }
 
-export function MobileNavigation({ isOpen, onClose }: MobileNavigationProps) {
+export function MobileNavigation({ isOpen, onClose, onOpenGetApp }: MobileNavigationProps) {
   const pathname = usePathname();
   const { locale, toggleLocale, t } = useLanguage();
   const [moreExpanded, setMoreExpanded] = React.useState(false);
@@ -69,6 +70,24 @@ export function MobileNavigation({ isOpen, onClose }: MobileNavigationProps) {
             <span>{t.nav.applyNow}</span>
             <ArrowRight size={16} />
           </Link>
+          <button
+            type="button"
+            className="btn-erkab btn-erkab-app w-100 justify-content-center"
+            onClick={() => {
+              onClose();
+              onOpenGetApp();
+            }}
+            aria-label={t.getAppModal.title}
+          >
+            <Smartphone size={16} className="text-primary flex-shrink-0" />
+            <span>{t.nav.getApp}</span>
+            <span
+              className="badge bg-primary text-white rounded-pill ms-auto px-2 py-1"
+              style={{ fontSize: '0.68rem', fontWeight: 600 }}
+            >
+              {t.getAppModal.badge}
+            </span>
+          </button>
           <Link
             href="/donations"
             className="btn-erkab btn-erkab-donate w-100 justify-content-center"

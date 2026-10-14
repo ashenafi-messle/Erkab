@@ -50,10 +50,30 @@ interface ReviewItem {
   createdAt: string;
 }
 
+interface NotificationItem {
+  id: string;
+  applicationType: string;
+  applicationId: string;
+  referenceNumber: string;
+  recipientName: string;
+  recipientEmail: string;
+  decision: string;
+  notificationType: string;
+  status: 'PENDING' | 'SENT' | 'FAILED';
+  attempts: number;
+  maxAttempts: number;
+  lastAttemptAt?: string | null;
+  sentAt?: string | null;
+  errorMessage?: string | null;
+  createdAt: string;
+}
+
 interface ApplicationDetailData {
   application: any;
   documents: DocumentItem[];
   reviews: ReviewItem[];
+  notifications?: NotificationItem[];
+  latestNotification?: NotificationItem | null;
 }
 
 export default function ApplicationsPage() {
@@ -84,6 +104,10 @@ export default function ApplicationsPage() {
   const [reviewNotes, setReviewNotes] = useState<string>('');
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  // Notification retry state
+  const [retryingNotification, setRetryingNotification] = useState(false);
+  const [retryResult, setRetryResult] = useState<{ text: string; success: boolean } | null>(null);
 
   // Confirmation modal
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -159,7 +183,14 @@ export default function ApplicationsPage() {
 
     try {
       setStatusUpdating(true);
-      await apiClient(`/admin/applications/${activeTab}/${selectedAppSummary.id}/status`, {
+      setRetryResult(null);
+
+      const res = await apiClient<{
+        success: boolean;
+        status: string;
+        message: string;
+        notification?: NotificationItem | null;
+      }>(`/admin/applications/${activeTab}/${selectedAppSummary.id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({
           status: decision,
@@ -168,7 +199,19 @@ export default function ApplicationsPage() {
       });
 
       const ref = selectedAppSummary.referenceNumber || selectedAppSummary.id;
-      setActionSuccess(`Application ${ref} has been updated to ${decision}.`);
+      let msg = `Application ${ref} has been updated to ${decision}.`;
+
+      if (res.notification) {
+        if (res.notification.status === 'SENT') {
+          msg += ` Official decision notification email was dispatched via Brevo SMTP to ${res.notification.recipientEmail}.`;
+        } else if (res.notification.status === 'FAILED') {
+          msg += ` Email delivery notice: ${res.notification.errorMessage || 'SMTP relay rejected message'}. You can retry delivery anytime.`;
+        } else if (res.notification.status === 'PENDING') {
+          msg += ` Decision notification email is queued for delivery.`;
+        }
+      }
+
+      setActionSuccess(msg);
       setConfirmOpen(false);
 
       // Refresh both list and detail modal
@@ -178,6 +221,42 @@ export default function ApplicationsPage() {
       alert(err.message || 'Failed to update application status.');
     } finally {
       setStatusUpdating(false);
+    }
+  };
+
+  const handleRetryNotification = async (notifId: string) => {
+    if (!selectedAppSummary) return;
+    try {
+      setRetryingNotification(true);
+      setRetryResult(null);
+
+      const res = await apiClient<{
+        success: boolean;
+        message: string;
+        notification: NotificationItem;
+      }>(`/admin/applications/${activeTab}/${selectedAppSummary.id}/notifications/${notifId}/retry`, {
+        method: 'POST',
+      });
+
+      setRetryResult({
+        text: res.message || 'Notification retry dispatched to Brevo SMTP.',
+        success: res.success,
+      });
+
+      // Refresh detail modal
+      const refreshed = await apiClient<{ success: boolean; data: ApplicationDetailData }>(
+        `/admin/applications/${activeTab}/${selectedAppSummary.id}`
+      );
+      if (refreshed.data) {
+        setDetailData(refreshed.data);
+      }
+    } catch (err: any) {
+      setRetryResult({
+        text: err.message || 'Failed to retry notification delivery.',
+        success: false,
+      });
+    } finally {
+      setRetryingNotification(false);
     }
   };
 
@@ -852,7 +931,101 @@ export default function ApplicationsPage() {
                         </div>
                       )}
 
-                      {/* Section 4: Decision & Status Update Form */}
+                      {/* Section 4: Decision Email Notification (Brevo SMTP Relay) */}
+                      <div className="card border rounded-3 p-3 mb-4 bg-white shadow-sm">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                            <Mail size={16} className="text-primary" />
+                            <span>Decision Email Notification (Brevo SMTP Relay)</span>
+                          </h6>
+                          {detailData?.latestNotification ? (
+                            detailData.latestNotification.status === 'SENT' ? (
+                              <span className="badge bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1">
+                                <CheckCircle size={13} />
+                                <span>Sent to SMTP Relay</span>
+                              </span>
+                            ) : detailData.latestNotification.status === 'FAILED' ? (
+                              <span className="badge bg-danger-subtle text-danger border border-danger-subtle d-inline-flex align-items-center gap-1">
+                                <AlertTriangle size={13} />
+                                <span>Failed — Retry Available</span>
+                              </span>
+                            ) : (
+                              <span className="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle d-inline-flex align-items-center gap-1">
+                                <Clock size={13} />
+                                <span>Pending / Queued</span>
+                              </span>
+                            )
+                          ) : (
+                            <span className="badge bg-light text-secondary border small">
+                              Not Triggered
+                            </span>
+                          )}
+                        </div>
+
+                        {retryResult && (
+                          <div className={`alert ${retryResult.success ? 'alert-success' : 'alert-danger'} py-2 px-3 small rounded-2 mb-3 d-flex align-items-center justify-content-between`}>
+                            <span>{retryResult.text}</span>
+                            <button type="button" className="btn-close btn-close-sm" onClick={() => setRetryResult(null)} />
+                          </div>
+                        )}
+
+                        {detailData?.latestNotification ? (
+                          <div className="bg-light bg-opacity-75 rounded-2 p-3 small border">
+                            <div className="row g-2">
+                              <div className="col-12 col-md-4">
+                                <span className="text-muted d-block small">Recipient</span>
+                                <span className="fw-medium text-dark font-monospace">{detailData.latestNotification.recipientEmail}</span>
+                              </div>
+                              <div className="col-12 col-md-3">
+                                <span className="text-muted d-block small">Decision Event</span>
+                                <span className="fw-semibold text-dark">{detailData.latestNotification.decision}</span>
+                              </div>
+                              <div className="col-12 col-md-3">
+                                <span className="text-muted d-block small">Last Attempt</span>
+                                <span className="text-dark">
+                                  {detailData.latestNotification.lastAttemptAt
+                                    ? new Date(detailData.latestNotification.lastAttemptAt).toLocaleString()
+                                    : 'Pending'}
+                                </span>
+                              </div>
+                              <div className="col-12 col-md-2 text-md-end align-self-center">
+                                {detailData.latestNotification.status === 'FAILED' && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1"
+                                    disabled={retryingNotification}
+                                    onClick={() => handleRetryNotification(detailData.latestNotification!.id)}
+                                  >
+                                    <RefreshCw size={13} className={retryingNotification ? 'spinner-border spinner-border-sm' : ''} />
+                                    <span>Retry Delivery</span>
+                                  </button>
+                                )}
+                              </div>
+
+                              {detailData.latestNotification.sentAt && (
+                                <div className="col-12 mt-2 pt-2 border-top text-success small d-flex align-items-center gap-1">
+                                  <Check size={14} />
+                                  <span>SMTP relay accepted delivery at {new Date(detailData.latestNotification.sentAt).toLocaleString()}</span>
+                                </div>
+                              )}
+
+                              {detailData.latestNotification.errorMessage && (
+                                <div className="col-12 mt-2 pt-2 border-top text-danger small">
+                                  <strong>Delivery failure summary:</strong> {detailData.latestNotification.errorMessage}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-3 bg-light rounded text-muted small">
+                            <p className="mb-0">
+                              No final decision has been recorded yet. An official decision email notification will automatically be generated and dispatched via Brevo SMTP relay when an administrator sets this application to <strong>Approved</strong> or <strong>Rejected</strong>.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Section 5: Decision & Status Update Form */}
                       <div className="card border border-primary-subtle bg-primary bg-opacity-10 rounded-3 p-3">
                         <h6 className="fw-bold text-dark mb-2">Record Review Decision</h6>
                         <p className="text-muted small mb-3">
@@ -934,9 +1107,15 @@ export default function ApplicationsPage() {
       <ConfirmModal
         isOpen={confirmOpen}
         title="Confirm Admissions Decision"
-        message={`Are you sure you want to change the status of application ${
-          selectedAppSummary?.referenceNumber || selectedAppSummary?.id
-        } to "${confirmDecision}"? This action will be audited.`}
+        message={
+          confirmDecision === 'APPROVED' || confirmDecision === 'REJECTED'
+            ? `Are you sure you want to change the status of application ${
+                selectedAppSummary?.referenceNumber || selectedAppSummary?.id
+              } to "${confirmDecision}"?\n\nAn official personalized notification email will be automatically dispatched to the applicant's registered address (${appData?.email || 'N/A'}) via Brevo SMTP.`
+            : `Are you sure you want to change the status of application ${
+                selectedAppSummary?.referenceNumber || selectedAppSummary?.id
+              } to "${confirmDecision}"? This action will be audited.`
+        }
         confirmText={`Yes, Set to ${confirmDecision}`}
         variant={confirmDecision === 'REJECTED' ? 'danger' : 'primary'}
         loading={statusUpdating}

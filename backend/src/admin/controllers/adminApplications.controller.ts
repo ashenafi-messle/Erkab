@@ -132,4 +132,38 @@ export class AdminApplicationsController {
       next(err);
     }
   }
+
+  public static async listNotifications(req: Request, res: Response, next: NextFunction) {
+    try {
+      const type = (req.params.type as 'students' | 'trainers' | 'tutors') || 'students';
+      const id = req.params.id as string;
+
+      const result = await AdminApplicationsService.getApplicationNotifications(type, id);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async retryNotification(req: Request, res: Response, next: NextFunction) {
+    try {
+      const type = (req.params.type as 'students' | 'trainers' | 'tutors') || 'students';
+      const id = req.params.id as string;
+      const notificationId = req.params.notificationId as string;
+      const adminUser = req.adminUser || { id: 'admin_usr_default', name: 'Erkab Administrator' };
+      const ipAddress = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+
+      const result = await AdminApplicationsService.retryApplicationNotification({
+        type,
+        applicationId: id,
+        notificationId,
+        adminUser,
+        ipAddress,
+      });
+
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
 }

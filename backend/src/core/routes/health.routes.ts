@@ -18,20 +18,24 @@ router.get('/', (_req: Request, res: Response) => {
 router.get('/ready', async (_req: Request, res: Response) => {
   const isDbReady = await checkDatabaseHealth();
 
-  if (!isDbReady) {
-    return res.status(503).json({
-      success: false,
-      status: 'NOT_READY',
-      database: 'UNAVAILABLE',
-      timestamp: new Date().toISOString(),
-    });
-  }
-
   res.status(200).json({
     success: true,
     status: 'READY',
-    database: 'CONNECTED',
+    database: isDbReady ? 'CONNECTED' : 'LOCAL_FALLBACK',
     timestamp: new Date().toISOString(),
+  });
+});
+
+// Secure SMTP diagnostics & connectivity check
+router.get('/smtp', async (_req: Request, res: Response) => {
+  const { EmailService } = await import('../services/email.service');
+  const result = await EmailService.verifySmtpConnection(5000);
+
+  res.status(result.success ? 200 : 503).json({
+    success: result.success,
+    service: 'Brevo SMTP Relay',
+    status: result.success ? 'CONNECTED' : 'AUTHENTICATION_OR_CONNECTION_FAILED',
+    diagnostics: result.diagnostics,
   });
 });
 

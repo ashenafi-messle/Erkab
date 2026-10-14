@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { Response } from 'express';
 import { query, queryOne, transaction } from '../../core/database/db';
 import { CloudinaryService } from '../../core/services/cloudinary.service';
+import { NotificationService } from '../../core/services/notification.service';
 import { NotFoundError, ValidationError } from '../../core/errors/AppError';
 import { logger } from '../../core/logging/logger';
 
@@ -243,10 +244,15 @@ export class AdminApplicationsService {
       [application.id]
     );
 
+    // Load decision notification outbox history
+    const notifications = await NotificationService.getNotificationsForApplication(type, application.id);
+
     return {
       application,
       documents: signedDocuments,
       reviews,
+      notifications,
+      latestNotification: notifications.length > 0 ? notifications[0] : null,
     };
   }
 
@@ -490,8 +496,15 @@ export class AdminApplicationsService {
       );
     }
 
+    let nameColumn = '"fullName"';
+    if (type === 'tutors') {
+      nameColumn = '"studentOrApplicantName"';
+    }
+
     const existing = await queryOne(
-      `SELECT "id", "referenceNumber", "status" FROM "public"."${tableName}" WHERE "id" = $1 OR "referenceNumber" = $1`,
+      `SELECT "id", "referenceNumber", "status", ${nameColumn} AS "applicantName", "email" 
+       FROM "public"."${tableName}" 
+       WHERE "id" = $1 OR "referenceNumber" = $1`,
       [applicationId]
     );
 
@@ -499,8 +512,13 @@ export class AdminApplicationsService {
       throw new NotFoundError(`Application '${applicationId}' not found`);
     }
 
+    const isFinalDecision = normalizedDecision === 'APPROVED' || normalizedDecision === 'REJECTED';
+    const isStatusTransition = existing.status !== normalizedDecision;
+    const shouldNotify = isFinalDecision && isStatusTransition;
+
     const reviewId = crypto.randomUUID();
     const auditId = crypto.randomUUID();
+    let notificationRecord: any = null;
 
     await transaction(async (client) => {
       // Record review
@@ -541,10 +559,38 @@ export class AdminApplicationsService {
           ipAddress || '127.0.0.1',
         ]
       );
+
+      // Trigger decision email notification only on actual transition into final status (APPROVED or REJECTED)
+      if (shouldNotify) {
+        notificationRecord = await NotificationService.createDecisionNotification(client, {
+          applicationType: type,
+          applicationId: existing.id,
+          referenceNumber: existing.referenceNumber,
+          recipientName: existing.applicantName || 'Applicant',
+          recipientEmail: existing.email || '',
+          decision: normalizedDecision as 'APPROVED' | 'REJECTED',
+          reviewId,
+        });
+      }
     });
 
+    // Asynchronously dispatch notification if one was created, without blocking or risking the saved decision
+    let dispatchResult: any = null;
+    if (notificationRecord && notificationRecord.id) {
+      dispatchResult = await NotificationService.dispatchNotification(notificationRecord.id);
+    }
+
+    const finalNotification = dispatchResult?.notification || notificationRecord || null;
+
     logger.info(
-      { reviewId, applicationId: existing.id, decision: normalizedDecision, reviewerId },
+      {
+        reviewId,
+        applicationId: existing.id,
+        decision: normalizedDecision,
+        reviewerId,
+        notificationStatus: finalNotification?.status,
+        shouldNotify,
+      },
       'Recorded application review decision'
     );
 
@@ -552,7 +598,77 @@ export class AdminApplicationsService {
       success: true,
       reviewId,
       status: normalizedDecision,
-      message: `Application status updated to ${normalizedDecision}`,
+      message: shouldNotify
+        ? `Application status updated to ${normalizedDecision}. Decision email notification processed.`
+        : `Application status updated to ${normalizedDecision}.`,
+      notification: finalNotification,
     };
+  }
+
+  public static async getApplicationNotifications(
+    type: 'students' | 'trainers' | 'tutors',
+    applicationId: string
+  ) {
+    let tableName: string;
+    if (type === 'students') tableName = 'StudentApplication';
+    else if (type === 'trainers') tableName = 'TrainerApplication';
+    else if (type === 'tutors') tableName = 'TutorApplication';
+    else throw new ValidationError(`Invalid application type: ${type}`);
+
+    const app = await queryOne(
+      `SELECT "id" FROM "public"."${tableName}" WHERE "id" = $1 OR "referenceNumber" = $1`,
+      [applicationId]
+    );
+
+    if (!app) {
+      throw new NotFoundError(`Application '${applicationId}' not found`);
+    }
+
+    const notifications = await NotificationService.getNotificationsForApplication(type, app.id);
+    return {
+      success: true,
+      data: notifications,
+    };
+  }
+
+  public static async retryApplicationNotification(params: {
+    type: 'students' | 'trainers' | 'tutors';
+    applicationId: string;
+    notificationId: string;
+    adminUser: { id: string; name: string };
+    ipAddress?: string;
+  }) {
+    const { type, applicationId, notificationId, adminUser, ipAddress } = params;
+
+    let tableName: string;
+    if (type === 'students') tableName = 'StudentApplication';
+    else if (type === 'trainers') tableName = 'TrainerApplication';
+    else if (type === 'tutors') tableName = 'TutorApplication';
+    else throw new ValidationError(`Invalid application type: ${type}`);
+
+    const app = await queryOne(
+      `SELECT "id" FROM "public"."${tableName}" WHERE "id" = $1 OR "referenceNumber" = $1`,
+      [applicationId]
+    );
+
+    if (!app) {
+      throw new NotFoundError(`Application '${applicationId}' not found`);
+    }
+
+    // Verify notification belongs to this application and type
+    const notif = await queryOne(
+      `SELECT * FROM "public"."ApplicationNotification" WHERE "id" = $1 AND "applicationId" = $2 AND "applicationType" = $3`,
+      [notificationId, app.id, type]
+    );
+
+    if (!notif) {
+      throw new NotFoundError(`Notification '${notificationId}' not found for this application`);
+    }
+
+    return NotificationService.retryNotification({
+      notificationId,
+      adminUser,
+      ipAddress,
+    });
   }
 }

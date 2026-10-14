@@ -268,3 +268,24 @@ model SystemIncident {
   createdAt   TimestamptzString @default(now())
   updatedAt   temporal.updatedAtString()
 }
+
+model ApplicationNotification {
+  id               String            @id
+  applicationType  String
+  applicationId    String
+  referenceNumber  String
+  recipientName    String
+  recipientEmail   String
+  decision         String
+  notificationType String
+  status           String            @default("PENDING")
+  attempts         Int               @default(0)
+  maxAttempts      Int               @default(3)
+  lastAttemptAt    TimestamptzString?
+  sentAt           TimestamptzString?
+  errorMessage     String?
+  idempotencyKey   String?           @unique
+  createdAt        TimestamptzString @default(now())
+  updatedAt        temporal.updatedAtString()
+}
+

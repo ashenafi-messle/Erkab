@@ -3,6 +3,7 @@ import app from './app';
 import { env } from './config/env';
 import { logger } from './core/logging/logger';
 import { disconnectDatabase, checkDatabaseHealth } from './core/database/db';
+import { ensureNotificationTable } from './prisma/migrateNotifications';
 
 const server = http.createServer(app);
 
@@ -11,6 +12,7 @@ async function startServer() {
     const isDbConnected = await checkDatabaseHealth();
     if (isDbConnected) {
       logger.info('Database connection established successfully');
+      await ensureNotificationTable();
     } else {
       logger.warn('Initial database connectivity check failed. Server will continue in degraded mode.');
     }
@@ -24,6 +26,36 @@ async function startServer() {
         },
         `Erkab Backend Server running on http://localhost:${env.PORT}`
       );
+
+      // Non-blocking Brevo SMTP startup verification (runs in background without delaying startup)
+      if (env.NODE_ENV !== 'test') {
+        import('./core/services/email.service')
+          .then(({ EmailService }) => EmailService.verifySmtpConnection(6000))
+          .then((res) => {
+            if (res.success) {
+              logger.info(
+                { host: res.diagnostics.host, port: res.diagnostics.port, verified: true },
+                'Brevo SMTP Relay authentication verified successfully'
+              );
+            } else {
+              logger.warn(
+                {
+                  host: res.diagnostics.host,
+                  port: res.diagnostics.port,
+                  hasLogin: res.diagnostics.hasLogin,
+                  hasKey: res.diagnostics.hasKey,
+                  isAuthError: res.diagnostics.isAuthError,
+                  errorCode: res.diagnostics.errorCode,
+                  error: res.diagnostics.errorMessage,
+                },
+                'Brevo SMTP Relay verification check completed with status'
+              );
+            }
+          })
+          .catch((err) => {
+            logger.warn({ err: err.message }, 'Brevo SMTP startup check caught error');
+          });
+      }
     });
   } catch (err: any) {
     logger.fatal({ err: err.message }, 'Failed to start server');

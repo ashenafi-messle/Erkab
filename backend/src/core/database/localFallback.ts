@@ -267,6 +267,27 @@ export function initializeLocalSchema() {
       createdAt TEXT,
       updatedAt TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS ApplicationNotification (
+      id TEXT PRIMARY KEY,
+      applicationType TEXT NOT NULL,
+      applicationId TEXT NOT NULL,
+      referenceNumber TEXT NOT NULL,
+      recipientName TEXT NOT NULL,
+      recipientEmail TEXT NOT NULL,
+      decision TEXT NOT NULL,
+      notificationType TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      attempts INTEGER NOT NULL DEFAULT 0,
+      maxAttempts INTEGER NOT NULL DEFAULT 3,
+      lastAttemptAt TEXT,
+      sentAt TEXT,
+      errorMessage TEXT,
+      idempotencyKey TEXT UNIQUE,
+      createdAt TEXT,
+      updatedAt TEXT
+    );
+
   `);
 
   seedInitialDataIfEmpty();

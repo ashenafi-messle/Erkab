@@ -17,6 +17,14 @@ const envSchema = z.object({
   MAX_FILE_SIZE_BYTES: z.coerce.number().default(5 * 1024 * 1024), // 5MB
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000), // 15 mins
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(200),
+  BREVO_SMTP_SERVER: z.string().default('smtp-relay.brevo.com'),
+  BREVO_SMTP_PORT: z.coerce.number().default(587),
+  BREVO_SMTP_LOGIN: z.string().default('YOUR_ROTATED_BREVO_SMTP_LOGIN'),
+  BREVO_SMTP_KEY: z.string().default('YOUR_ROTATED_BREVO_SMTP_KEY'),
+  BREVO_SENDER_EMAIL: z.string().default('YOUR_VERIFIED_SENDER_EMAIL'),
+  BREVO_SENDER_NAME: z.string().default('Erkab Skills Training Organization'),
+  BREVO_API_KEY: z.string().optional(),
+  ERKAB_LOGO_URL: z.string().default('https://res.cloudinary.com/oydsg6yc/image/upload/v1791965396/erkab/branding/erkab_logo_official.jpg'),
 });
 
 const parsed = envSchema.safeParse(process.env);
