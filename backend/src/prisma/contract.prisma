@@ -289,3 +289,24 @@ model ApplicationNotification {
   updatedAt        temporal.updatedAtString()
 }
 
+model ContactMessage {
+  id                 String             @id
+  referenceCode      String             @unique
+  fullName           String
+  email              String
+  phone              String?
+  subject            String
+  category           String             @default("GENERAL_INQUIRY")
+  message            String
+  status             String             @default("NEW")
+  priority           String             @default("NORMAL")
+  assignedAdminId    String?
+  internalNotes      String?
+  readAt             TimestamptzString?
+  resolvedAt         TimestamptzString?
+  resolvedByAdminId  String?
+  createdAt          TimestamptzString  @default(now())
+  updatedAt          temporal.updatedAtString()
+}
+
+

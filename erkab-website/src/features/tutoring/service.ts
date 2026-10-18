@@ -44,8 +44,6 @@ export interface TutoringPaymentDetails {
   amount: number;
   currency: string;
   status: 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED';
-  paymentMode: 'DEMO';
-  transactionId?: string | null;
   tutoringReference: string;
   studentName: string;
   gradeLevel: string;
@@ -53,18 +51,6 @@ export interface TutoringPaymentDetails {
   deliveryPreference: string;
   tutoringStatus: string;
   createdAt: string;
-}
-
-export interface ConfirmPaymentResponse {
-  success: boolean;
-  alreadyConfirmed?: boolean;
-  status: 'SUCCEEDED' | 'FAILED';
-  paymentReference: string;
-  transactionId?: string;
-  tutoringReference: string;
-  amount: number;
-  currency: string;
-  message: string;
 }
 
 export async function submitTutoringRequest(data: TutoringRequestData): Promise<TutoringSubmissionResponse> {
@@ -85,17 +71,4 @@ export async function getTutoringPayment(reference: string): Promise<TutoringPay
     }
   );
   return res.data;
-}
-
-export async function confirmDemoPayment(
-  reference: string,
-  simulatedOutcome: 'SUCCESS' | 'FAILURE' = 'SUCCESS'
-): Promise<ConfirmPaymentResponse> {
-  return apiClient<ConfirmPaymentResponse>(
-    API_ENDPOINTS.TUTORING.CONFIRM_DEMO(reference),
-    {
-      method: 'POST',
-      body: JSON.stringify({ simulatedOutcome }),
-    }
-  );
 }

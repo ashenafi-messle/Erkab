@@ -23,7 +23,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Shield,
-  Layers
+  Layers,
+  Mail
 } from 'lucide-react';
 
 interface AdminSidebarProps {
@@ -45,6 +46,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
   const superAdminNav = [
     { label: 'Dashboard', href: '/super-admin/dashboard', icon: LayoutDashboard },
     { label: 'Applications', href: '/super-admin/applications', icon: GraduationCap },
+    { label: 'Contact Messages', href: '/super-admin/messages', icon: Mail },
     { label: 'Training Programs', href: '/super-admin/programs', icon: BookOpen },
     { label: 'Partnerships', href: '/super-admin/partnerships', icon: Handshake },
     { label: 'Donations & Payments', href: '/super-admin/donations', icon: HeartHandshake },

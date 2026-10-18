@@ -8,6 +8,7 @@ import adminApplicationsRoutes from './adminApplications.routes';
 import adminPartnershipsRoutes from './adminPartnerships.routes';
 import adminDonationsRoutes from './adminDonations.routes';
 import adminNewsRoutes from './adminNews.routes';
+import adminContactRoutes from './adminContact.routes';
 
 const router = Router();
 
@@ -31,5 +32,6 @@ router.use('/applications', adminApplicationsRoutes);
 router.use('/partnerships', adminPartnershipsRoutes);
 router.use('/donations', adminDonationsRoutes);
 router.use('/news', adminNewsRoutes);
+router.use('/contact-messages', adminContactRoutes);
 
 export default router;

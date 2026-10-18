@@ -107,20 +107,48 @@ export class PartnershipsService {
     }
   }
 
+  public static async getPartnershipStats() {
+    const totalRow = await queryOne<{ count: string | number }>(
+      `SELECT COUNT(*) as count FROM "public"."PartnershipRequest"`
+    );
+    const pendingRow = await queryOne<{ count: string | number }>(
+      `SELECT COUNT(*) as count FROM "public"."PartnershipRequest" WHERE "status" = 'PENDING'`
+    );
+    const underReviewRow = await queryOne<{ count: string | number }>(
+      `SELECT COUNT(*) as count FROM "public"."PartnershipRequest" WHERE "status" = 'UNDER_REVIEW'`
+    );
+    const approvedRow = await queryOne<{ count: string | number }>(
+      `SELECT COUNT(*) as count FROM "public"."PartnershipRequest" WHERE "status" = 'APPROVED'`
+    );
+    const rejectedRow = await queryOne<{ count: string | number }>(
+      `SELECT COUNT(*) as count FROM "public"."PartnershipRequest" WHERE "status" = 'REJECTED'`
+    );
+
+    return {
+      total: Number(totalRow?.count || 0),
+      pending: Number(pendingRow?.count || 0),
+      underReview: Number(underReviewRow?.count || 0),
+      approved: Number(approvedRow?.count || 0),
+      rejected: Number(rejectedRow?.count || 0),
+      totalRequests: Number(totalRow?.count || 0),
+      pendingRequests: Number(pendingRow?.count || 0),
+    };
+  }
+
   public static async listPartnerships(page = 1, limit = 20, status?: string, search?: string) {
     const offset = (page - 1) * limit;
-    let sql = `SELECT "id", "reference", "organizationName", "organizationType", "contactPerson", "email", "phone", "country", "city", "partnershipType", "status", "createdAt", "updatedAt" FROM "public"."PartnershipRequest"`;
+    let sql = `SELECT "id", "reference", "organizationName", "organizationType", "contactPerson", "email", "phone", "country", "city", "partnershipType", "status", "reviewNotes", "reviewedBy", "reviewedAt", "createdAt", "updatedAt" FROM "public"."PartnershipRequest"`;
     const params: any[] = [];
     const whereClauses: string[] = [];
 
-    if (status) {
+    if (status && status !== 'ALL') {
       params.push(status);
       whereClauses.push(`"status" = $${params.length}`);
     }
 
-    if (search) {
-      params.push(`%${search}%`);
-      whereClauses.push(`("organizationName" ILIKE $${params.length} OR "contactPerson" ILIKE $${params.length} OR "reference" ILIKE $${params.length} OR "email" ILIKE $${params.length})`);
+    if (search && search.trim()) {
+      params.push(`%${search.trim()}%`);
+      whereClauses.push(`("organizationName" ILIKE $${params.length} OR "contactPerson" ILIKE $${params.length} OR "reference" ILIKE $${params.length} OR "email" ILIKE $${params.length} OR "phone" ILIKE $${params.length})`);
     }
 
     if (whereClauses.length > 0) {
@@ -139,12 +167,42 @@ export class PartnershipsService {
     const countRes = await queryOne<{ total: string }>(countSql, params.slice(0, whereClauses.length));
     const total = parseInt(countRes?.total || '0', 10);
 
+    // Query attached documents for these partnerships
+    const partnershipIds = rows.map((r: any) => r.id);
+    const docMap = new Map<string, any[]>();
+    if (partnershipIds.length > 0) {
+      const placeholders = partnershipIds.map((_, i) => `$${i + 1}`).join(', ');
+      const docs = await query(
+        `SELECT "id", "partnershipRequestId", "category", "originalFilename", "fileType", "fileSize", "createdAt" 
+         FROM "public"."ApplicationDocument" 
+         WHERE "partnershipRequestId" IN (${placeholders})`,
+        partnershipIds
+      );
+      for (const d of docs) {
+        if (!docMap.has(d.partnershipRequestId)) {
+          docMap.set(d.partnershipRequestId, []);
+        }
+        docMap.get(d.partnershipRequestId)!.push(d);
+      }
+    }
+
+    const enriched = rows.map((r: any) => {
+      const pDocs = docMap.get(r.id) || [];
+      return {
+        ...r,
+        documents: pDocs,
+        hasDocument: pDocs.length > 0,
+        hasLicenseDocument: pDocs.length > 0,
+        organizationLicenseDoc: pDocs.length > 0 ? `/api/v1/admin/partnerships/${r.id}/documents/${pDocs[0].id}/view` : null,
+      };
+    });
+
     return {
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
-      data: rows,
+      totalPages: Math.ceil(total / limit) || 1,
+      data: enriched,
     };
   }
 
@@ -166,16 +224,197 @@ export class PartnershipsService {
 
     const signedDocuments = documents.map((doc: any) => ({
       ...doc,
+      originalName: doc.originalFilename,
+      mimeType: doc.fileType,
       reviewUrl: CloudinaryService.generateSignedReviewUrl(
         doc.cloudinaryPublicId,
         doc.cloudinaryResourceType
       ),
+      viewUrl: `/api/v1/admin/partnerships/${partnership.id}/documents/${doc.id}/view`,
+      downloadUrl: `/api/v1/admin/partnerships/${partnership.id}/documents/${doc.id}/download`,
     }));
+
+    // Fetch audit history for this partnership
+    const auditLogs = await query(
+      `SELECT "id", "adminUserId", "adminName", "action", "details", "createdAt" 
+       FROM "public"."AdminAuditLog" 
+       WHERE "resource" IN ('PartnershipRequest', 'ApplicationDocument') AND "details" ILIKE $1 
+       ORDER BY "createdAt" DESC LIMIT 10`,
+      [`%${partnership.id}%`]
+    );
 
     return {
       partnership,
       documents: signedDocuments,
+      auditLogs,
     };
+  }
+
+  public static async getDocumentAccessUrl(params: {
+    partnershipId: string;
+    documentId: string;
+    adminUser: { id: string; name: string };
+    ipAddress?: string;
+  }) {
+    const { partnershipId, documentId, adminUser, ipAddress } = params;
+
+    const partnership = await queryOne(
+      `SELECT "id", "reference", "organizationName" FROM "public"."PartnershipRequest" WHERE "id" = $1 OR "reference" = $1`,
+      [partnershipId]
+    );
+
+    if (!partnership) {
+      throw new NotFoundError(`Partnership request '${partnershipId}' not found`);
+    }
+
+    const doc = await queryOne(
+      `SELECT * FROM "public"."ApplicationDocument" WHERE "id" = $1 AND "partnershipRequestId" = $2`,
+      [documentId, partnership.id]
+    );
+
+    if (!doc) {
+      throw new NotFoundError(`Document '${documentId}' not found for partnership '${partnership.reference}'`);
+    }
+
+    let ext = 'pdf';
+    if (doc.originalFilename && doc.originalFilename.includes('.')) {
+      ext = doc.originalFilename.split('.').pop()!.toLowerCase();
+    } else if (doc.cloudinaryPublicId && doc.cloudinaryPublicId.includes('.')) {
+      ext = doc.cloudinaryPublicId.split('.').pop()!.toLowerCase();
+    }
+
+    const signedUrl = CloudinaryService.generateSignedReviewUrl(
+      doc.cloudinaryPublicId,
+      doc.cloudinaryResourceType || 'raw',
+      ext
+    );
+
+    try {
+      await query(
+        `INSERT INTO "public"."AdminAuditLog" (
+          "id", "adminUserId", "adminName", "action", "resource", "details", "ipAddress", "createdAt"
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+        [
+          crypto.randomUUID(),
+          adminUser.id,
+          adminUser.name,
+          'DOCUMENT_ACCESS',
+          'ApplicationDocument',
+          JSON.stringify({
+            documentId: doc.id,
+            filename: doc.originalFilename,
+            category: doc.category,
+            partnershipId: partnership.id,
+            reference: partnership.reference,
+            organizationName: partnership.organizationName,
+          }),
+          ipAddress || '127.0.0.1',
+        ]
+      );
+    } catch (auditErr: any) {
+      logger.warn({ err: auditErr.message }, 'Failed to record partnership document access audit log');
+    }
+
+    return {
+      success: true,
+      data: {
+        id: doc.id,
+        category: doc.category,
+        originalFilename: doc.originalFilename,
+        fileType: doc.fileType,
+        fileSize: doc.fileSize,
+        accessUrl: signedUrl,
+      },
+      document: {
+        id: doc.id,
+        category: doc.category,
+        originalFilename: doc.originalFilename,
+        fileType: doc.fileType,
+        fileSize: doc.fileSize,
+        accessUrl: signedUrl,
+      },
+      accessUrl: signedUrl,
+    };
+  }
+
+  public static async streamDocument(params: {
+    partnershipId: string;
+    documentId: string;
+    adminUser: { id: string; name: string };
+    disposition: 'inline' | 'attachment';
+    ipAddress?: string;
+    res: any;
+  }) {
+    const { partnershipId, documentId, adminUser, disposition, ipAddress, res } = params;
+
+    const partnership = await queryOne(
+      `SELECT "id", "reference", "organizationName" FROM "public"."PartnershipRequest" WHERE "id" = $1 OR "reference" = $1`,
+      [partnershipId]
+    );
+
+    if (!partnership) {
+      throw new NotFoundError(`Partnership request '${partnershipId}' not found`);
+    }
+
+    const doc = await queryOne(
+      `SELECT * FROM "public"."ApplicationDocument" WHERE "id" = $1 AND "partnershipRequestId" = $2`,
+      [documentId, partnership.id]
+    );
+
+    if (!doc) {
+      throw new NotFoundError(`Document '${documentId}' not found for partnership '${partnership.reference}'`);
+    }
+
+    let ext = 'pdf';
+    if (doc.originalFilename && doc.originalFilename.includes('.')) {
+      ext = doc.originalFilename.split('.').pop()!.toLowerCase();
+    } else if (doc.cloudinaryPublicId && doc.cloudinaryPublicId.includes('.')) {
+      ext = doc.cloudinaryPublicId.split('.').pop()!.toLowerCase();
+    }
+
+    try {
+      await query(
+        `INSERT INTO "public"."AdminAuditLog" (
+          "id", "adminUserId", "adminName", "action", "resource", "details", "ipAddress", "createdAt"
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+        [
+          crypto.randomUUID(),
+          adminUser.id,
+          adminUser.name,
+          disposition === 'inline' ? 'DOCUMENT_VIEW' : 'DOCUMENT_DOWNLOAD',
+          'ApplicationDocument',
+          JSON.stringify({
+            documentId: doc.id,
+            filename: doc.originalFilename,
+            category: doc.category,
+            partnershipId: partnership.id,
+            reference: partnership.reference,
+            organizationName: partnership.organizationName,
+          }),
+          ipAddress || '127.0.0.1',
+        ]
+      );
+    } catch (auditErr: any) {
+      logger.warn({ err: auditErr.message }, 'Failed to record partnership document stream audit log');
+    }
+
+    const assetStream = await CloudinaryService.fetchAssetStream(
+      doc.cloudinaryPublicId,
+      doc.cloudinaryResourceType || 'raw',
+      ext
+    );
+
+    const contentType = doc.fileType || (assetStream.headers['content-type'] as string) || 'application/pdf';
+    const filename = encodeURIComponent(doc.originalFilename || 'partnership_document.pdf');
+
+    res.writeHead(assetStream.statusCode || 200, {
+      'Content-Type': contentType,
+      'Content-Disposition': `${disposition}; filename="${filename}"; filename*=UTF-8''${filename}`,
+      'X-Content-Type-Options': 'nosniff',
+      ...(assetStream.headers['content-length'] ? { 'Content-Length': assetStream.headers['content-length'] } : {}),
+    });
+
+    assetStream.stream.pipe(res);
   }
 
   public static async getLicenseDownloadUrl(id: string) {
@@ -220,7 +459,7 @@ export class PartnershipsService {
     reviewerName: string;
   }) {
     const partnership = await queryOne(
-      `SELECT "id", "reference" FROM "public"."PartnershipRequest" WHERE "id" = $1 OR "reference" = $1`,
+      `SELECT "id", "reference", "organizationName" FROM "public"."PartnershipRequest" WHERE "id" = $1 OR "reference" = $1`,
       [params.id]
     );
 
@@ -234,6 +473,31 @@ export class PartnershipsService {
        WHERE "id" = $4`,
       [params.status, params.reviewNotes || null, params.reviewerName, partnership.id]
     );
+
+    // Record audit log
+    try {
+      await query(
+        `INSERT INTO "public"."AdminAuditLog" (
+          "id", "adminUserId", "adminName", "action", "resource", "details", "createdAt"
+        ) VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+        [
+          crypto.randomUUID(),
+          params.reviewerId,
+          params.reviewerName,
+          'PARTNERSHIP_REVIEW',
+          'PartnershipRequest',
+          JSON.stringify({
+            partnershipId: partnership.id,
+            reference: partnership.reference,
+            organizationName: partnership.organizationName,
+            status: params.status,
+            reviewNotes: params.reviewNotes || null,
+          }),
+        ]
+      );
+    } catch (auditErr: any) {
+      logger.warn({ err: auditErr.message }, 'Failed to record partnership review audit log');
+    }
 
     logger.info(
       { partnershipId: partnership.id, status: params.status, reviewedBy: params.reviewerName },

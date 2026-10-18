@@ -53,6 +53,27 @@ export default function TutoringPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Restore draft form data if returning from payment/bank-transfer instructions
+  React.useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('erkab_tutoring_draft');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.studentName) setStudentName(parsed.studentName);
+        if (parsed.educationLevel) setEducationLevel(parsed.educationLevel);
+        if (parsed.schoolGrade) setSchoolGrade(parsed.schoolGrade);
+        if (parsed.universityInfo) setUniversityInfo(parsed.universityInfo);
+        if (parsed.subjects) setSubjects(parsed.subjects);
+        if (parsed.deliveryPreference) setDeliveryPreference(parsed.deliveryPreference);
+        if (parsed.parentOrContactPhone) setParentOrContactPhone(parsed.parentOrContactPhone);
+        if (parsed.email) setEmail(parsed.email);
+        if (parsed.locationDetails) setLocationDetails(parsed.locationDetails);
+      }
+    } catch {
+      // Ignore sessionStorage errors
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -90,6 +111,26 @@ export default function TutoringPage() {
 
     const finalGradeLevel = educationLevel === 'School' ? schoolGrade : universityInfo.trim();
 
+    // Persist draft in sessionStorage so user can return without losing entered data
+    try {
+      sessionStorage.setItem(
+        'erkab_tutoring_draft',
+        JSON.stringify({
+          studentName: studentName.trim(),
+          educationLevel,
+          schoolGrade,
+          universityInfo: universityInfo.trim(),
+          subjects: subjects.trim(),
+          deliveryPreference,
+          parentOrContactPhone: parentOrContactPhone.trim(),
+          email: email.trim(),
+          locationDetails: locationDetails.trim(),
+        })
+      );
+    } catch {
+      // Ignore sessionStorage errors
+    }
+
     try {
       const res = await submitTutoringRequest({
         studentName: studentName.trim(),
@@ -110,7 +151,7 @@ export default function TutoringPage() {
       } else if (res.paymentReference) {
         router.push(`/tutoring/payment/${res.paymentReference}`);
       } else {
-        router.push(`/tutoring/payment/success?ref=${res.referenceNumber}`);
+        router.push(`/tutoring/payment/${res.referenceNumber}`);
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Submission failed';

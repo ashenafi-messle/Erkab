@@ -102,20 +102,3 @@ export async function getDonationPayment(reference: string): Promise<DonationPay
   );
   return res?.data || res;
 }
-
-export async function confirmDemoDonationPayment(
-  reference: string,
-  simulateFailure: boolean = false
-): Promise<{
-  paymentReference: string;
-  status: string;
-  donationStatus: string;
-  verifiedAt?: string;
-  message: string;
-}> {
-  const res = await apiClient<any>(API_ENDPOINTS.DONATIONS.CONFIRM_DEMO(reference), {
-    method: 'POST',
-    body: JSON.stringify({ simulateFailure }),
-  });
-  return res?.data || res;
-}

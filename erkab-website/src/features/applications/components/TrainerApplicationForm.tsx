@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { FormField } from '@/components/forms/FormField';
@@ -8,7 +8,8 @@ import { FileUploadField } from '@/components/forms/FileUploadField';
 import { FormProgress } from '@/components/forms/FormProgress';
 import { ApplicationSummary } from '@/components/forms/ApplicationSummary';
 import { FormError } from '@/components/forms/FormError';
-import { PROGRAMS, getLocalizedProgram } from '@/lib/constants/programs';
+import { PROGRAMS, Program, getLocalizedProgram } from '@/lib/constants/programs';
+import { getPrograms } from '@/features/programs/service';
 import { TrainerApplicationFormData } from '../types';
 import { submitTrainerApplication } from '../service';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
@@ -30,6 +31,19 @@ export function TrainerApplicationForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [programsList, setProgramsList] = useState<Program[]>(PROGRAMS);
+
+  useEffect(() => {
+    let isMounted = true;
+    getPrograms().then((data) => {
+      if (isMounted && Array.isArray(data) && data.length > 0) {
+        setProgramsList(data);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const [formData, setFormData] = useState<TrainerApplicationFormData>({
     fullName: '',
@@ -217,7 +231,7 @@ export function TrainerApplicationForm() {
               value={formData.expertiseTrack}
               onChange={handleTextChange}
               required
-              options={PROGRAMS.map((p) => {
+              options={programsList.map((p) => {
                 const locP = getLocalizedProgram(p, locale);
                 return { value: locP.title, label: locP.title };
               })}

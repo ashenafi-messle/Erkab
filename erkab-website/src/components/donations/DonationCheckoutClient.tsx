@@ -1,264 +1,329 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Container } from '@/components/layout/Container';
-import {
-  getDonationPayment,
-  confirmDemoDonationPayment,
-  DonationPaymentDetail,
-} from '@/features/donations/service';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { getDonationPayment } from '@/features/donations/service';
 import {
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  Loader2,
+  Building2,
+  Copy,
+  Check,
   ArrowLeft,
   ShieldCheck,
-  CreditCard,
-  RefreshCw,
+  Smartphone,
+  Info,
+  Heart,
+  Landmark
 } from 'lucide-react';
 
 interface DonationCheckoutClientProps {
-  paymentReference: string;
+  paymentReference?: string;
+  initialAmount?: number;
 }
 
-export function DonationCheckoutClient({ paymentReference }: DonationCheckoutClientProps) {
+export function DonationCheckoutClient({
+  paymentReference,
+  initialAmount,
+}: DonationCheckoutClientProps) {
   const { locale, t } = useLanguage();
   const isAm = locale === 'am';
+  const searchParams = useSearchParams();
 
-  const [payment, setPayment] = useState<DonationPaymentDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(false);
-  const [error, setError] = useState('');
-  const [resultStatus, setResultStatus] = useState<string | null>(null);
-  const [resultMessage, setResultMessage] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [amount, setAmount] = useState<number | null>(initialAmount || null);
+  const [campaignTitle, setCampaignTitle] = useState<string | null>(null);
 
-  const loadPaymentDetails = async () => {
-    if (!paymentReference) return;
-    setLoading(true);
-    setError('');
-    try {
-      const data = await getDonationPayment(paymentReference);
-      setPayment(data);
-      if (data.status === 'SUCCEEDED') {
-        setResultStatus('SUCCEEDED');
-      } else if (data.status === 'FAILED') {
-        setResultStatus('FAILED');
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to retrieve payment details';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Read amount and campaign from query parameters or look up reference if provided
   useEffect(() => {
-    loadPaymentDetails();
-  }, [paymentReference]);
+    const queryAmount = searchParams?.get('amount');
+    const queryCampaign = searchParams?.get('campaign');
 
-  const handleSimulatePayment = async (simulateFailure: boolean = false) => {
-    if (!paymentReference) return;
-    setProcessing(true);
-    setError('');
+    if (queryAmount) {
+      const parsed = parseInt(queryAmount, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        setAmount(parsed);
+      }
+    }
+
+    if (queryCampaign) {
+      setCampaignTitle(queryCampaign);
+    }
+
+    // If a reference was passed, look up the record details for informational display
+    if (paymentReference) {
+      getDonationPayment(paymentReference)
+        .then((data) => {
+          if (data?.amount) {
+            setAmount(data.amount);
+          }
+          if (data?.campaign?.title) {
+            setCampaignTitle(data.campaign.title);
+          }
+        })
+        .catch(() => {
+          // Gracefully fall back to query amount or general donation instructions
+        });
+    }
+  }, [paymentReference, searchParams]);
+
+  const handleCopyAccountNumber = async () => {
+    const accountNumber = '3902411503011';
     try {
-      const res = await confirmDemoDonationPayment(paymentReference, simulateFailure);
-      setResultStatus(res.status);
-      setResultMessage(res.message);
-      await loadPaymentDetails();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Transaction simulation failed';
-      setError(msg);
-    } finally {
-      setProcessing(false);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(accountNumber);
+      } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = accountNumber;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    } catch {
+      // In case copy fails, select text or let donor view number
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
     }
   };
+
+  const backUrl = amount ? `/donations?amount=${amount}` : '/donations';
 
   return (
-    <div className="section-py section-bg-light min-vh-100 d-flex align-items-center">
+    <div className="section-py section-bg-light min-vh-100 d-flex align-items-center py-5">
       <Container>
-        <div className="mx-auto" style={{ maxWidth: '640px' }}>
-          {/* Back link */}
-          <Link
-            href="/donations"
-            className="text-decoration-none text-muted small d-inline-flex align-items-center gap-1 mb-3"
-          >
-            <ArrowLeft size={16} />
-            <span>{t.donationCheckout.backToDonations}</span>
-          </Link>
+        <div className="mx-auto" style={{ maxWidth: '680px' }}>
+          {/* Back button that preserves the selected amount */}
+          <div className="mb-3">
+            <Link
+              href={backUrl}
+              className="text-decoration-none text-muted small d-inline-flex align-items-center gap-2 px-3 py-2 bg-white rounded-pill shadow-sm border border-light-subtle"
+            >
+              <ArrowLeft size={16} />
+              <span className="fw-medium">{t.donationCheckout.backToDonations}</span>
+            </Link>
+          </div>
 
           <div className="card shadow-sm border-0 rounded-4 overflow-hidden bg-white">
             {/* Header banner */}
-            <div className="bg-primary text-white p-4">
+            <div
+              className="p-4 text-white"
+              style={{
+                background: 'linear-gradient(135deg, #075A91 0%, #0878B9 100%)',
+              }}
+            >
               <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="badge bg-warning text-dark fw-bold text-uppercase px-2 py-1">
-                  DEMO MODE ONLY
+                <span
+                  className="badge px-3 py-1 rounded-pill fw-semibold text-uppercase"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    backdropFilter: 'blur(4px)',
+                    fontSize: '0.75rem',
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  <Landmark size={13} className="me-1 inline" />
+                  {isAm ? 'ቀጥተኛ የባንክ ማስተላለፊያ' : 'Direct Bank Transfer'}
                 </span>
-                <span className="small opacity-75 font-monospace">{paymentReference}</span>
+                {amount && (
+                  <span
+                    className="badge rounded-pill fw-bold"
+                    style={{ backgroundColor: '#C7FF45', color: '#15171A' }}
+                  >
+                    {amount.toLocaleString()} ETB
+                  </span>
+                )}
               </div>
               <h1 className="h4 fw-bold mb-1">{t.donationCheckout.title}</h1>
-              <p className="small mb-0 opacity-75">{t.donationCheckout.subtitle}</p>
+              <p className="small mb-0 opacity-90">{t.donationCheckout.subtitle}</p>
             </div>
 
-            {/* Prominent Demo Notice */}
-            <div className="p-3 bg-warning-subtle border-bottom border-warning-subtle text-dark small d-flex align-items-start gap-2">
-              <AlertTriangle size={20} className="text-warning-emphasis flex-shrink-0 mt-0.5" />
-              <div>
-                <strong>{t.donationCheckout.demoAlert}</strong>
-                <p className="mb-0 text-muted" style={{ fontSize: '0.8rem' }}>
-                  {t.donationCheckout.demoAlertDesc}
+            <div className="p-4 p-md-5">
+              {/* EXACT REQUIRED TEXT BLOCK */}
+              <div
+                className="p-4 rounded-4 mb-4 text-center border"
+                style={{
+                  backgroundColor: '#F5F6F8',
+                  borderColor: '#E2E8F0',
+                }}
+              >
+                <div className="d-inline-flex align-items-center justify-content-center p-2 rounded-circle mb-2 bg-white text-primary shadow-sm">
+                  <Heart size={20} className="text-danger" />
+                </div>
+
+                {/* Exactly matching: Dear Donator */}
+                <h2 className="h4 fw-bold text-dark mb-2">
+                  Dear Donator
+                </h2>
+
+                {/* Exactly matching: you can direct transfer by using the organization Dashen Bank Account */}
+                <p className="text-secondary mb-3 fs-6" style={{ maxWidth: '480px', margin: '0 auto' }}>
+                  you can direct transfer by using the organization Dashen Bank Account
                 </p>
-              </div>
-            </div>
 
-            <div className="p-4">
-              {loading ? (
-                <div className="text-center py-5 text-muted">
-                  <Loader2 size={32} className="spinner-border text-primary mb-2" />
-                  <p className="small mb-0">{t.common.loading}</p>
-                </div>
-              ) : error && !payment ? (
-                <div className="alert alert-danger small mb-0">
-                  <p className="mb-2">{error}</p>
-                  <button
-                    onClick={loadPaymentDetails}
-                    className="btn btn-sm btn-outline-danger"
+                {/* Exactly matching: 3902411503011 */}
+                <div className="my-3 py-2 px-3 bg-white rounded-3 border d-inline-block shadow-sm">
+                  <div
+                    className="fw-bold font-monospace text-primary tracking-wider"
+                    style={{ fontSize: '1.75rem', letterSpacing: '2px' }}
                   >
-                    <RefreshCw size={14} className="me-1 inline" />
-                    Retry
-                  </button>
-                </div>
-              ) : payment ? (
-                <div>
-                  {/* Donation breakdown card */}
-                  <div className="p-3 rounded-3 bg-light border border-light-subtle mb-4">
-                    <div className="d-flex justify-content-between align-items-center pb-2 mb-2 border-bottom">
-                      <span className="text-muted small">{t.donationCheckout.amountDueLabel}</span>
-                      <strong className="fs-5 text-primary">
-                        {payment.amount.toLocaleString()} {payment.currency}
-                      </strong>
-                    </div>
-
-                    <div className="d-flex justify-content-between align-items-center pb-2 mb-2 border-bottom">
-                      <span className="text-muted small">{t.donationCheckout.referenceLabel}</span>
-                      <span className="font-monospace small text-dark fw-semibold">
-                        {payment.donationReference}
-                      </span>
-                    </div>
-
-                    {payment.campaign && (
-                      <div className="d-flex justify-content-between align-items-center pb-2 mb-2 border-bottom">
-                        <span className="text-muted small">
-                          {isAm ? 'የተመረጠው ዘመቻ' : 'Campaign Allocation'}
-                        </span>
-                        <span className="small text-dark fw-medium">
-                          {payment.campaign.title}
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="d-flex justify-content-between align-items-center">
-                      <span className="text-muted small">{t.donationCheckout.statusLabel}</span>
-                      <span
-                        className={`badge ${
-                          payment.status === 'SUCCEEDED'
-                            ? 'bg-success'
-                            : payment.status === 'FAILED'
-                            ? 'bg-danger'
-                            : 'bg-secondary'
-                        }`}
-                      >
-                        {payment.status}
-                      </span>
-                    </div>
+                    3902411503011
                   </div>
+                </div>
 
-                  {/* Outcome display */}
-                  {resultStatus === 'SUCCEEDED' || payment.status === 'SUCCEEDED' ? (
-                    <div className="text-center py-4 bg-success-subtle rounded-3 border border-success-subtle mb-4">
-                      <CheckCircle2 size={48} className="text-success mb-2" />
-                      <h4 className="h5 fw-bold text-success mb-1">
-                        {t.donationCheckout.statusSucceeded}
-                      </h4>
-                      <p className="small text-muted mb-3">
-                        {resultMessage || t.donationCheckout.receiptNotice}
-                      </p>
-                      {payment.verifiedAt && (
-                        <span className="badge bg-white text-muted border font-monospace small mb-3">
-                          Verified: {new Date(payment.verifiedAt).toLocaleString()}
+                {/* Exactly matching: Erkab Skill training Charty org (Preserve exact spelling) */}
+                <div className="fw-bold text-dark fs-5 mt-2">
+                  Erkab Skill training Charty org
+                </div>
+              </div>
+
+              {/* Informational Donation Amount (if entered) */}
+              {amount ? (
+                <div className="p-3 rounded-3 bg-light border border-light-subtle mb-4 d-flex align-items-start gap-3">
+                  <Info size={20} className="text-primary mt-1 flex-shrink-0" />
+                  <div>
+                    <div className="d-flex align-items-baseline gap-2 flex-wrap">
+                      <span className="text-muted small fw-semibold">
+                        {t.donationCheckout.selectedAmountLabel}:
+                      </span>
+                      <strong className="text-primary fs-5">
+                        {amount.toLocaleString()} ETB
+                      </strong>
+                      {campaignTitle && (
+                        <span className="badge bg-secondary-subtle text-secondary small">
+                          {campaignTitle}
                         </span>
                       )}
-                      <div>
-                        <Link href="/donations" className="btn btn-sm btn-outline-success">
-                          {t.donationCheckout.backToDonations}
-                        </Link>
+                    </div>
+                    <p className="text-muted small mb-0 mt-1" style={{ fontSize: '0.82rem' }}>
+                      {t.donationCheckout.informationalAmountNotice}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Organized Bank Transfer Information Card */}
+              <div className="card border rounded-4 overflow-hidden mb-4 shadow-sm">
+                <div className="card-header bg-light py-3 px-4 border-bottom">
+                  <div className="d-flex align-items-center gap-2">
+                    <Building2 size={18} className="text-primary" />
+                    <span className="fw-bold text-dark small text-uppercase">
+                      {isAm ? 'ይፋዊ የባንክ ሂሳብ ዝርዝር መረጃ' : 'Official Bank Account Details'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="card-body p-4">
+                  <div className="row g-3">
+                    {/* Bank Name */}
+                    <div className="col-12 col-sm-6">
+                      <div className="text-muted small mb-1">{t.donationCheckout.bankNameLabel}</div>
+                      <div className="fw-bold text-dark fs-6 d-flex align-items-center gap-2">
+                        <Landmark size={18} className="text-primary" />
+                        <span>Dashen Bank (ዳሸን ባንክ)</span>
                       </div>
                     </div>
-                  ) : resultStatus === 'FAILED' || payment.status === 'FAILED' ? (
-                    <div className="text-center py-4 bg-danger-subtle rounded-3 border border-danger-subtle mb-4">
-                      <XCircle size={48} className="text-danger mb-2" />
-                      <h4 className="h5 fw-bold text-danger mb-1">
-                        {t.donationCheckout.statusFailed}
-                      </h4>
-                      <p className="small text-muted mb-3">
-                        {resultMessage || t.donationCheckout.retryPrompt}
-                      </p>
-                      <button
-                        onClick={() => handleSimulatePayment(false)}
-                        disabled={processing}
-                        className="btn btn-sm btn-outline-danger"
-                      >
-                        <RefreshCw size={14} className="me-1 inline" />
-                        Retry Demo Payment
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      {error && <div className="alert alert-danger small mb-3">{error}</div>}
 
-                      <div className="d-grid gap-2">
+                    {/* Account Holder Name */}
+                    <div className="col-12 col-sm-6">
+                      <div className="text-muted small mb-1">{t.donationCheckout.accountHolderLabel}</div>
+                      <div className="fw-bold text-dark fs-6 font-monospace">
+                        Erkab Skill training Charty org
+                      </div>
+                    </div>
+
+                    {/* Account Number with prominent Copy Button */}
+                    <div className="col-12 pt-2 border-top">
+                      <div className="text-muted small mb-1">{t.donationCheckout.accountNumberLabel}</div>
+                      <div className="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center justify-content-between gap-3 p-3 bg-light rounded-3 border">
+                        <div className="d-flex align-items-center gap-2">
+                          <span
+                            className="font-monospace fw-bold text-dark fs-4 text-break"
+                            style={{ letterSpacing: '1px' }}
+                          >
+                            3902411503011
+                          </span>
+                        </div>
+
                         <button
                           type="button"
-                          onClick={() => handleSimulatePayment(false)}
-                          disabled={processing}
-                          className="btn btn-success py-2 fw-bold d-flex align-items-center justify-content-center gap-2"
+                          onClick={handleCopyAccountNumber}
+                          className={`btn ${
+                            copied
+                              ? 'btn-success text-white'
+                              : 'btn-primary text-white'
+                          } d-inline-flex align-items-center justify-content-center gap-2 px-3 py-2 fw-semibold rounded-3 shadow-sm`}
+                          style={{ minWidth: '190px', transition: 'all 0.2s ease-in-out' }}
                         >
-                          {processing ? (
+                          {copied ? (
                             <>
-                              <Loader2 size={18} className="spinner-border spinner-border-sm" />
-                              <span>{t.donationCheckout.processing}</span>
+                              <Check size={18} />
+                              <span>{t.donationCheckout.accountNumberCopied}</span>
                             </>
                           ) : (
                             <>
-                              <CreditCard size={18} />
-                              <span>{t.donationCheckout.simulateSuccessBtn}</span>
+                              <Copy size={18} />
+                              <span>{t.donationCheckout.copyAccountNumberBtn}</span>
                             </>
                           )}
                         </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleSimulatePayment(true)}
-                          disabled={processing}
-                          className="btn btn-outline-danger py-2 small d-flex align-items-center justify-content-center gap-2"
-                        >
-                          <AlertTriangle size={16} />
-                          <span>{t.donationCheckout.simulateFailureBtn}</span>
-                        </button>
-                      </div>
-
-                      <div className="mt-3 text-center">
-                        <span className="text-muted" style={{ fontSize: '0.75rem' }}>
-                          <ShieldCheck size={14} className="me-1 inline text-muted" />
-                          Simulated payment environment • Neon PostgreSQL transactions
-                        </span>
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
-              ) : null}
+              </div>
+
+              {/* Step by step transfer guide */}
+              <div className="p-4 rounded-4 bg-light border border-light-subtle mb-4">
+                <h3 className="h6 fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                  <Smartphone size={18} className="text-primary" />
+                  <span>{t.donationCheckout.howToTransferHeading}</span>
+                </h3>
+
+                <ol className="ps-3 mb-0 text-secondary small" style={{ lineHeight: 1.7 }}>
+                  <li className="mb-2">{t.donationCheckout.step1}</li>
+                  <li className="mb-2">{t.donationCheckout.step2}</li>
+                  <li>{t.donationCheckout.step3}</li>
+                </ol>
+              </div>
+
+              {/* Security Reminder */}
+              <div className="p-3 rounded-3 bg-white border border-success-subtle text-dark small d-flex align-items-start gap-2 shadow-sm mb-4">
+                <ShieldCheck size={20} className="text-success flex-shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-success d-block mb-1">
+                    {t.donationCheckout.securityHeading}
+                  </strong>
+                  <p className="mb-0 text-muted" style={{ fontSize: '0.82rem' }}>
+                    {t.donationCheckout.securityNotice}
+                  </p>
+                </div>
+              </div>
+
+              {/* Navigation Action Buttons */}
+              <div className="d-flex flex-column flex-sm-row gap-2 justify-content-between align-items-center pt-2">
+                <Link
+                  href={backUrl}
+                  className="btn btn-outline-secondary w-100 w-sm-auto d-inline-flex align-items-center justify-content-center gap-2 py-2 px-4 rounded-3"
+                >
+                  <ArrowLeft size={16} />
+                  <span>{t.donationCheckout.backToDonations}</span>
+                </Link>
+
+                <Link
+                  href="/contact"
+                  className="btn btn-outline-primary w-100 w-sm-auto d-inline-flex align-items-center justify-content-center gap-2 py-2 px-4 rounded-3"
+                >
+                  <span>{isAm ? 'ጥያቄ ካለዎት ያግኙን' : 'Have Questions? Contact Us'}</span>
+                </Link>
+              </div>
             </div>
           </div>
         </div>

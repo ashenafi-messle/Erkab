@@ -12,7 +12,6 @@ export const API_ENDPOINTS = {
   TUTORING: {
     REQUEST: '/api/v1/web/tutoring/requests',
     PAYMENT: (reference: string) => `/api/v1/web/tutoring/payments/${reference}`,
-    CONFIRM_DEMO: (reference: string) => `/api/v1/web/tutoring/payments/${reference}/confirm-demo`,
   },
   PARTNERSHIPS: {
     SUBMIT: '/api/v1/web/partnerships',
@@ -22,7 +21,6 @@ export const API_ENDPOINTS = {
     CAMPAIGN_DETAIL: (slug: string) => `/api/v1/web/donation-campaigns/${slug}`,
     CREATE: '/api/v1/web/donations',
     PAYMENT: (reference: string) => `/api/v1/web/donations/payments/${reference}`,
-    CONFIRM_DEMO: (reference: string) => `/api/v1/web/donations/payments/${reference}/confirm-demo`,
   },
   NEWS: {
     LIST: '/api/v1/web/news',
@@ -33,7 +31,7 @@ export const API_ENDPOINTS = {
     DETAIL: (slug: string) => `/api/v1/web/news/${slug}`,
   },
   CONTACT: {
-    SEND: '/api/v1/contact',
+    SEND: '/api/v1/web/contact',
   },
   ADMIN: {
     PARTNERSHIPS: {

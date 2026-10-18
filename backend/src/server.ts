@@ -4,6 +4,7 @@ import { env } from './config/env';
 import { logger } from './core/logging/logger';
 import { disconnectDatabase, checkDatabaseHealth } from './core/database/db';
 import { ensureNotificationTable } from './prisma/migrateNotifications';
+import { ensureContactMessageTable } from './prisma/migrateContact';
 
 const server = http.createServer(app);
 
@@ -13,6 +14,7 @@ async function startServer() {
     if (isDbConnected) {
       logger.info('Database connection established successfully');
       await ensureNotificationTable();
+      await ensureContactMessageTable();
     } else {
       logger.warn('Initial database connectivity check failed. Server will continue in degraded mode.');
     }

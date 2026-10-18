@@ -16,12 +16,39 @@ export const upload = multer({
       'image/jpeg',
       'image/png',
       'image/jpg',
+      'image/webp',
     ];
 
     if (!allowedMimes.includes(file.mimetype)) {
       return cb(
         new ValidationError(
-          `Invalid file format for ${file.originalname}. Only PDF, JPEG, and PNG files are allowed.`
+          `Invalid file format for ${file.originalname}. Only PDF, JPEG, PNG, and WebP files are allowed.`
+        )
+      );
+    }
+
+    cb(null, true);
+  },
+});
+
+export const uploadProgramImage = multer({
+  storage,
+  limits: {
+    fileSize: env.MAX_FILE_SIZE_BYTES, // 5MB
+    files: 1,
+  },
+  fileFilter: (_req, file, cb) => {
+    const allowedImageMimes = [
+      'image/jpeg',
+      'image/png',
+      'image/jpg',
+      'image/webp',
+    ];
+
+    if (!allowedImageMimes.includes(file.mimetype)) {
+      return cb(
+        new ValidationError(
+          `Invalid image format for ${file.originalname}. Only JPEG, PNG, and WebP images are allowed.`
         )
       );
     }

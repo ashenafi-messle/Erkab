@@ -60,7 +60,7 @@ export async function apiClient<T = any>(
   const url = `${API_BASE_URL}${cleanEndpoint}`;
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers as Record<string, string>),
   };
 

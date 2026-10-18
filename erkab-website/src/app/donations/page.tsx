@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Container } from '@/components/layout/Container';
 import { PageHero } from '@/components/ui/PageHero';
 import { FormField } from '@/components/forms/FormField';
@@ -13,12 +13,13 @@ import {
   DonationCampaign,
 } from '@/features/donations/service';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
-import { Heart, Loader2, Sparkles, ShieldAlert, Check } from 'lucide-react';
+import { Heart, Loader2, Sparkles, Check, ArrowRight } from 'lucide-react';
 
 const SUGGESTED_AMOUNTS = [250, 500, 1000, 2500];
 
-export default function DonationsPage() {
+function DonationsFormContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { locale, t } = useLanguage();
   const isAm = locale === 'am';
 
@@ -35,6 +36,29 @@ export default function DonationsPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Prefill amount if returning from checkout instructions
+  useEffect(() => {
+    const qAmount = searchParams?.get('amount');
+    const qCampaign = searchParams?.get('campaign');
+
+    if (qAmount) {
+      const parsed = parseInt(qAmount, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        if (SUGGESTED_AMOUNTS.includes(parsed)) {
+          setSelectedAmount(parsed);
+          setCustomAmount('');
+        } else {
+          setSelectedAmount(parsed);
+          setCustomAmount(parsed.toString());
+        }
+      }
+    }
+
+    if (qCampaign) {
+      setCampaignSlug(qCampaign);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     getDonationCampaigns().then((data) => {
@@ -79,44 +103,35 @@ export default function DonationsPage() {
       return;
     }
 
-    if (isAnonymous && !donorEmail) {
-      setError(
-        isAm
-          ? 'ለሙከራ ደረሰኝ ማረጋገጫ እባክዎ ኢሜይል ያስገቡ።'
-          : 'Please enter an email address to receive your demo confirmation.'
-      );
-      return;
-    }
-
     setLoading(true);
 
     try {
-      const res = await createDonation({
-        amount: finalAmount,
-        currency: 'ETB',
-        campaignSlug: campaignSlug || undefined,
-        donorName: isAnonymous ? 'Anonymous Supporter' : donorName,
-        email: donorEmail,
-        phone: phone || undefined,
-        message: message || undefined,
-        isAnonymous,
-      });
-
-      // Redirect to the dedicated demo checkout page
-      const paymentRef = res?.paymentReference || (res as any)?.data?.paymentReference;
-      if (paymentRef) {
-        router.push(`/donations/checkout/${paymentRef}`);
-      } else {
-        throw new Error('Donation created but payment reference was not returned.');
+      // If contact information is provided, record the pending donation intent for recordkeeping
+      if (donorEmail) {
+        await createDonation({
+          amount: finalAmount,
+          currency: 'ETB',
+          campaignSlug: campaignSlug || undefined,
+          donorName: isAnonymous ? 'Anonymous Supporter' : donorName,
+          email: donorEmail,
+          phone: phone || undefined,
+          message: message || undefined,
+          isAnonymous,
+        }).catch((err) => {
+          console.warn('Could not record pending donation intent:', err?.message);
+        });
       }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to create donation';
-      setError(
-        isAm
-          ? `${msg}። እባክዎ ትንሽ ቆይተው እንደገና ይሞክሩ።`
-          : `${msg}. Please try again shortly.`
-      );
-      setLoading(false);
+
+      // Navigate to the bank-transfer instructions page
+      const params = new URLSearchParams();
+      params.set('amount', finalAmount.toString());
+      if (campaignSlug) params.set('campaign', campaignSlug);
+      router.push(`/donations/checkout?${params.toString()}`);
+    } catch {
+      // In all cases, proceed to the bank transfer instructions
+      const params = new URLSearchParams();
+      params.set('amount', finalAmount.toString());
+      router.push(`/donations/checkout?${params.toString()}`);
     }
   };
 
@@ -164,7 +179,7 @@ export default function DonationsPage() {
 
           <div className="mx-auto" style={{ maxWidth: '680px' }}>
             <div className="form-card">
-              <div className="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom border-light-subtle">
+              <div className="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom border-light-subtle">
                 <div className="brand-mark bg-white" style={{ width: '44px', height: '44px' }}>
                   <Image
                     src="/images/logo/erkab-logo-square.jpg"
@@ -181,15 +196,6 @@ export default function DonationsPage() {
                   </h3>
                   <span className="small text-muted">{t.donationsPage.fundSubtitle}</span>
                 </div>
-              </div>
-
-              {/* Prominent Demo Notice */}
-              <div className="alert alert-warning d-flex align-items-start gap-2 mb-4 py-2 px-3 small border-0">
-                <ShieldAlert size={18} className="text-warning-emphasis mt-1 flex-shrink-0" />
-                <span className="text-dark">
-                  <strong>{isAm ? 'የሙከራ ክፍያ ማሳሰቢያ፡' : 'DEMO MODE NOTICE:'}</strong>{' '}
-                  {t.donationsPage.demoNotice}
-                </span>
               </div>
 
               <form onSubmit={handleSubmit}>
@@ -288,7 +294,7 @@ export default function DonationsPage() {
                       type="email"
                       value={donorEmail}
                       onChange={(e) => setDonorEmail(e.target.value)}
-                      required
+                      required={!isAnonymous}
                     />
                   </div>
                   <div className="col-12 col-md-6">
@@ -324,8 +330,8 @@ export default function DonationsPage() {
                     </>
                   ) : (
                     <>
-                      <Sparkles size={16} />
                       <span>{t.donationsPage.submitBtn}</span>
+                      <ArrowRight size={16} />
                     </>
                   )}
                 </button>
@@ -335,5 +341,21 @@ export default function DonationsPage() {
         </Container>
       </section>
     </>
+  );
+}
+
+export default function DonationsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-vh-100 d-flex align-items-center justify-content-center">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      }
+    >
+      <DonationsFormContent />
+    </Suspense>
   );
 }

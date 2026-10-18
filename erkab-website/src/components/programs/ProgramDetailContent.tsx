@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Container } from '@/components/layout/Container';
@@ -22,15 +22,22 @@ interface ProgramDetailContentProps {
   initialProgram: Program;
 }
 
+const FALLBACK_IMAGE = '/images/programs/web-development.jpg';
+
 export function ProgramDetailContent({ initialProgram }: ProgramDetailContentProps) {
   const { locale, t } = useLanguage();
   const program = getLocalizedProgram(initialProgram, locale);
   const isAm = locale === 'am';
+  const [imgSrc, setImgSrc] = useState<string>(program.image || FALLBACK_IMAGE);
+
+  const modules = Array.isArray(program.modules) ? program.modules : [];
+  const skills = Array.isArray(program.skills) ? program.skills : [];
+  const careerPaths = Array.isArray(program.careerPaths) ? program.careerPaths : [];
 
   return (
     <>
       <PageHero
-        badge={program.category}
+        badge={program.category || 'Professional Track'}
         title={program.title}
         description={program.summary}
       >
@@ -59,12 +66,17 @@ export function ProgramDetailContent({ initialProgram }: ProgramDetailContentPro
                 style={{ aspectRatio: '16 / 9', maxHeight: '420px', backgroundColor: '#071927' }}
               >
                 <Image
-                  src={program.image}
-                  alt={program.imageAlt}
+                  src={imgSrc}
+                  alt={program.imageAlt || program.title || 'Program banner'}
                   fill
                   priority
                   sizes="(max-width: 991px) 100vw, 800px"
                   style={{ objectFit: 'cover' }}
+                  onError={() => {
+                    if (imgSrc !== FALLBACK_IMAGE) {
+                      setImgSrc(FALLBACK_IMAGE);
+                    }
+                  }}
                 />
               </div>
 
@@ -72,69 +84,75 @@ export function ProgramDetailContent({ initialProgram }: ProgramDetailContentPro
               <div className="mb-5">
                 <h2 className="h4 fw-bold text-dark mb-3">{t.programsPage.overview}</h2>
                 <p className="text-muted lead fs-6" style={{ lineHeight: '1.75' }}>
-                  {program.description}
+                  {program.description || program.summary}
                 </p>
               </div>
 
               {/* Modules & Curriculum */}
-              <div className="mb-5">
-                <h3 className="h4 fw-bold text-dark mb-4 d-flex align-items-center gap-2">
-                  <BookOpen size={22} className="text-primary" />
-                  <span>{t.programsPage.curriculumModules}</span>
-                </h3>
-                <div className="d-flex flex-column gap-3">
-                  {program.modules.map((mod, i) => (
-                    <div
-                      key={i}
-                      className="p-3 rounded-3 bg-light border border-light-subtle d-flex align-items-start gap-3"
-                    >
+              {modules.length > 0 && (
+                <div className="mb-5">
+                  <h3 className="h4 fw-bold text-dark mb-4 d-flex align-items-center gap-2">
+                    <BookOpen size={22} className="text-primary" />
+                    <span>{t.programsPage.curriculumModules}</span>
+                  </h3>
+                  <div className="d-flex flex-column gap-3">
+                    {modules.map((mod, i) => (
                       <div
-                        className="rounded-circle d-flex align-items-center justify-content-center bg-primary text-white fw-bold small flex-shrink-0"
-                        style={{ width: '28px', height: '28px', fontSize: '0.8rem' }}
+                        key={i}
+                        className="p-3 rounded-3 bg-light border border-light-subtle d-flex align-items-start gap-3"
                       >
-                        {i + 1}
+                        <div
+                          className="rounded-circle d-flex align-items-center justify-content-center bg-primary text-white fw-bold small flex-shrink-0"
+                          style={{ width: '28px', height: '28px', fontSize: '0.8rem' }}
+                        >
+                          {i + 1}
+                        </div>
+                        <div className="fw-semibold text-dark small pt-1">{mod}</div>
                       </div>
-                      <div className="fw-semibold text-dark small pt-1">{mod}</div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Skills acquired */}
-              <div className="mb-5">
-                <h3 className="h4 fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                  <Wrench size={22} className="text-primary" />
-                  <span>{t.programsPage.coreCompetencies}</span>
-                </h3>
-                <div className="d-flex flex-wrap gap-2">
-                  {program.skills.map((skill) => (
-                    <span
-                      key={skill}
-                      className="badge bg-light text-primary border border-info-subtle px-3 py-2 rounded-pill small fw-bold"
-                    >
-                      {skill}
-                    </span>
-                  ))}
+              {skills.length > 0 && (
+                <div className="mb-5">
+                  <h3 className="h4 fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                    <Wrench size={22} className="text-primary" />
+                    <span>{t.programsPage.coreCompetencies}</span>
+                  </h3>
+                  <div className="d-flex flex-wrap gap-2">
+                    {skills.map((skill) => (
+                      <span
+                        key={skill}
+                        className="badge bg-light text-primary border border-info-subtle px-3 py-2 rounded-pill small fw-bold"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Career Paths */}
-              <div className="mb-5">
-                <h3 className="h4 fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                  <Briefcase size={22} className="text-primary" />
-                  <span>{t.programsPage.careerPathways}</span>
-                </h3>
-                <div className="row g-3">
-                  {program.careerPaths.map((career, i) => (
-                    <div key={i} className="col-12 col-sm-6">
-                      <div className="p-3 bg-light rounded-3 border border-light-subtle d-flex align-items-center gap-2">
-                        <CheckCircle2 size={16} className="text-success flex-shrink-0" />
-                        <span className="small fw-semibold text-dark">{career}</span>
+              {careerPaths.length > 0 && (
+                <div className="mb-5">
+                  <h3 className="h4 fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                    <Briefcase size={22} className="text-primary" />
+                    <span>{t.programsPage.careerPathways}</span>
+                  </h3>
+                  <div className="row g-3">
+                    {careerPaths.map((career, i) => (
+                      <div key={i} className="col-12 col-sm-6">
+                        <div className="p-3 bg-light rounded-3 border border-light-subtle d-flex align-items-center gap-2">
+                          <CheckCircle2 size={16} className="text-success flex-shrink-0" />
+                          <span className="small fw-semibold text-dark">{career}</span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Right Sidebar Column */}
@@ -149,7 +167,7 @@ export function ProgramDetailContent({ initialProgram }: ProgramDetailContentPro
                     <Clock size={18} className="text-primary" />
                     <div>
                       <small className="text-muted d-block">{t.programsPage.duration}</small>
-                      <strong className="text-dark small">{program.duration}</strong>
+                      <strong className="text-dark small">{program.duration || 'Standard Term'}</strong>
                     </div>
                   </div>
 
@@ -157,7 +175,7 @@ export function ProgramDetailContent({ initialProgram }: ProgramDetailContentPro
                     <Laptop size={18} className="text-primary" />
                     <div>
                       <small className="text-muted d-block">{t.programsPage.deliveryFormat}</small>
-                      <strong className="text-dark small">{program.delivery}</strong>
+                      <strong className="text-dark small">{program.delivery || 'In-Person & Lab'}</strong>
                     </div>
                   </div>
 
@@ -179,7 +197,7 @@ export function ProgramDetailContent({ initialProgram }: ProgramDetailContentPro
                     <ShieldAlert size={16} />
                     <span className="small fw-bold text-dark">{t.programsPage.prerequisites}</span>
                   </div>
-                  <p className="text-muted small mb-0">{program.prerequisites}</p>
+                  <p className="text-muted small mb-0">{program.prerequisites || 'Basic computer literacy and enthusiasm to learn.'}</p>
                 </div>
 
                 <Link

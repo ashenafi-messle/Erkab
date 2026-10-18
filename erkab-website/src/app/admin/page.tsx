@@ -220,7 +220,7 @@ export default function AdminDashboardPage() {
               <h1 className="h4 fw-bold text-dark mb-0">Erkab Administration Directorate</h1>
             </div>
             <p className="text-muted small mb-0">
-              Centralized platform management: Partnerships, Donations (Demo), and News & Updates
+              Centralized platform management: Partnerships, Donations, and News & Updates
             </p>
           </div>
 
@@ -264,7 +264,7 @@ export default function AdminDashboardPage() {
             onClick={() => setActiveTab('donations')}
           >
             <Heart size={16} />
-            <span>Donations & Demo Payments</span>
+            <span>Donations & Contributions</span>
           </button>
 
           <button
@@ -430,9 +430,9 @@ export default function AdminDashboardPage() {
           <div className="card shadow-sm border-0 rounded-4 overflow-hidden bg-white p-4">
             <div className="d-flex justify-content-between align-items-center mb-3">
               <div>
-                <h2 className="h6 fw-bold text-dark mb-0">Donation Records & Demo Payment Audit</h2>
-                <span className="badge bg-warning text-dark small mt-1">
-                  DEMO MODE — ALL TRANSACTIONS SIMULATED
+                <h2 className="h6 fw-bold text-dark mb-0">Donation Inquiries & Contribution Records</h2>
+                <span className="badge bg-secondary text-white small mt-1">
+                  Bank Transfers & Inquiries
                 </span>
               </div>
               <button onClick={fetchDonations} className="btn btn-sm btn-outline-secondary">

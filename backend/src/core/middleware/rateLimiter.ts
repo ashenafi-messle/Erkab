@@ -28,3 +28,18 @@ export const applicationSubmitLimiter = rateLimit({
     },
   },
 });
+
+export const contactSubmitLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 10, // max 10 submissions per 15 min per IP
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: {
+      code: 'RATE_LIMIT_EXCEEDED',
+      message: 'Too many contact messages submitted from this IP. Please wait a few minutes before trying again.',
+    },
+  },
+});
+

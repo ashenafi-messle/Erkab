@@ -1,18 +1,35 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Container } from '../layout/Container';
 import { SectionHeading } from '../ui/SectionHeading';
 import { ProgramGrid } from '../programs/ProgramGrid';
-import { PROGRAMS } from '@/lib/constants/programs';
+import { PROGRAMS, Program } from '@/lib/constants/programs';
+import { getPrograms } from '@/features/programs/service';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { ArrowRight } from 'lucide-react';
 
 export function ProgramPreview() {
   const { t } = useLanguage();
-  // Curate 4 high-impact, diverse tracks for the homepage to prevent excessive scrolling
-  const featuredPrograms = PROGRAMS.slice(0, 4);
+  const [featuredPrograms, setFeaturedPrograms] = useState<Program[]>(PROGRAMS.slice(0, 4));
+
+  useEffect(() => {
+    let isMounted = true;
+    getPrograms()
+      .then((data) => {
+        if (isMounted && data && data.length > 0) {
+          setFeaturedPrograms(data.slice(0, 4));
+        }
+      })
+      .catch((err) => {
+        console.warn('ProgramPreview: failed to fetch programs, using fallback', err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <section className="section-py section-bg-light" id="programs">

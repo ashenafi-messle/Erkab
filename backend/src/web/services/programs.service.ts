@@ -22,15 +22,25 @@ export interface ProgramModel {
   updatedAt: string;
 }
 
-function parseJsonField(val: any): any {
+function parseJsonArray(val: any): string[] {
+  if (!val) return [];
+  if (Array.isArray(val)) return val.map((x) => String(x).trim()).filter(Boolean);
   if (typeof val === 'string') {
-    try {
-      return JSON.parse(val);
-    } catch {
-      return val;
+    const trimmed = val.trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed.map((x) => String(x).trim()).filter(Boolean);
+      } catch {
+        // Fall back to delimiter splitting
+      }
     }
+    return trimmed
+      .split(/[\n,]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
-  return val;
+  return [];
 }
 
 export class ProgramsService {
@@ -38,33 +48,33 @@ export class ProgramsService {
     const rows = await query<ProgramModel>(
       `SELECT * FROM "public"."TrainingProgram" 
        WHERE "isPublished" = true 
-       ORDER BY "id" ASC`
+       ORDER BY "createdAt" ASC, "id" ASC`
     );
 
     return rows.map((p) => ({
       ...p,
-      skills: parseJsonField(p.skills),
-      modules: parseJsonField(p.modules),
-      careerPaths: parseJsonField(p.careerPaths),
+      skills: parseJsonArray(p.skills),
+      modules: parseJsonArray(p.modules),
+      careerPaths: parseJsonArray(p.careerPaths),
     }));
   }
 
-  public static async getBySlug(slug: string): Promise<ProgramModel> {
+  public static async getBySlug(identifier: string): Promise<ProgramModel> {
     const row = await queryOne<ProgramModel>(
       `SELECT * FROM "public"."TrainingProgram" 
-       WHERE "slug" = $1 AND "isPublished" = true`,
-      [slug]
+       WHERE ("slug" = $1 OR "id" = $1) AND "isPublished" = true`,
+      [identifier]
     );
 
     if (!row) {
-      throw new NotFoundError(`Training program with slug '${slug}' not found`);
+      throw new NotFoundError(`Training program '${identifier}' not found`);
     }
 
     return {
       ...row,
-      skills: parseJsonField(row.skills),
-      modules: parseJsonField(row.modules),
-      careerPaths: parseJsonField(row.careerPaths),
+      skills: parseJsonArray(row.skills),
+      modules: parseJsonArray(row.modules),
+      careerPaths: parseJsonArray(row.careerPaths),
     };
   }
 
@@ -79,9 +89,9 @@ export class ProgramsService {
 
     return {
       ...row,
-      skills: parseJsonField(row.skills),
-      modules: parseJsonField(row.modules),
-      careerPaths: parseJsonField(row.careerPaths),
+      skills: parseJsonArray(row.skills),
+      modules: parseJsonArray(row.modules),
+      careerPaths: parseJsonArray(row.careerPaths),
     };
   }
 }

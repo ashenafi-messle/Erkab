@@ -1,6 +1,7 @@
 import { HeroSection } from '@/components/home/HeroSection';
-import { PartnerStrip } from '@/components/home/PartnerStrip';
+import { ImageShowcase3D } from '@/components/home/ImageShowcase3D';
 import { MissionSection } from '@/components/home/MissionSection';
+import { PartnerStrip } from '@/components/home/PartnerStrip';
 import { ProgramPreview } from '@/components/home/ProgramPreview';
 import { WhyErkab } from '@/components/home/WhyErkab';
 import { HowItWorks } from '@/components/home/HowItWorks';
@@ -13,11 +14,14 @@ export default function HomePage() {
       {/* 1. Hero with Cinematic Photography & Actions */}
       <HeroSection />
 
-      {/* 2. Slim Partner & Community Strip */}
-      <PartnerStrip />
+      {/* 2. NEW: Automatic 3D image showcase */}
+      <ImageShowcase3D />
 
-      {/* 3. Short Mission Introduction */}
+      {/* 3. Existing Mission & Purpose section */}
       <MissionSection />
+
+      {/* 4. Slim Partner & Community Strip */}
+      <PartnerStrip />
 
       {/* 4. Featured Training Programs (Curated set + View All) */}
       <ProgramPreview />

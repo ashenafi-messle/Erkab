@@ -5,7 +5,8 @@ import { ApplicationsController } from '../controllers/applications.controller';
 import { PartnershipsController } from '../controllers/partnerships.controller';
 import { DonationsController } from '../controllers/donations.controller';
 import { NewsController } from '../controllers/news.controller';
-import { applicationSubmitLimiter } from '../../core/middleware/rateLimiter';
+import { ContactController } from '../controllers/contact.controller';
+import { applicationSubmitLimiter, contactSubmitLimiter } from '../../core/middleware/rateLimiter';
 import { upload } from '../../core/middleware/upload.middleware';
 
 const router = Router();
@@ -66,5 +67,13 @@ router.post(
 // News & Updates
 router.get('/news', NewsController.list);
 router.get('/news/:slug', NewsController.getBySlug);
+
+// Public Contact Form
+router.post(
+  '/contact',
+  contactSubmitLimiter,
+  upload.none(),
+  ContactController.submit
+);
 
 export default router;

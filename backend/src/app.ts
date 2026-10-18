@@ -92,6 +92,12 @@ app.use(['/api/v1/health', '/api/health', '/health'], healthRoutes);
 app.use(['/api/v1/web', '/api/web', '/web'], webRoutes);
 app.use(['/api/v1/admin', '/api/admin', '/admin'], adminRoutes);
 
+// Direct contact route alias for backward compatibility
+app.use(['/api/v1/contact', '/api/contact', '/contact'], (req, res, next) => {
+  req.url = '/contact';
+  return webRoutes(req, res, next);
+});
+
 // 404 & Centralized error handling
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -62,6 +62,21 @@ function detectBufferType(buffer: Buffer): { mime: string; ext: string } | null 
     return { mime: 'image/jpeg', ext: 'jpg' };
   }
 
+  // WebP signature: RIFF....WEBP (52 49 46 46 .... 57 45 42 50)
+  if (
+    buffer.length >= 12 &&
+    buffer[0] === 0x52 &&
+    buffer[1] === 0x49 &&
+    buffer[2] === 0x46 &&
+    buffer[3] === 0x46 &&
+    buffer[8] === 0x57 &&
+    buffer[9] === 0x45 &&
+    buffer[10] === 0x42 &&
+    buffer[11] === 0x50
+  ) {
+    return { mime: 'image/webp', ext: 'webp' };
+  }
+
   // DOCX / Office Open XML: PK\x03\x04
   if (
     buffer.length >= 4 &&
@@ -219,6 +234,132 @@ export class CloudinaryService {
     }
   }
 
+  /**
+   * Upload public training program cover images directly to Cloudinary
+   * Accessible by public website visitors with CDN optimization
+   */
+  public static async uploadProgramImage(
+    file: FileToUpload,
+    slugOrTitle: string
+  ): Promise<{
+    publicId: string;
+    secureUrl: string;
+    format: string;
+    bytes: number;
+    width?: number;
+    height?: number;
+  }> {
+    if (!file || !file.buffer || file.buffer.length === 0) {
+      throw new ValidationError('Program image file is empty or missing');
+    }
+
+    if (file.size > env.MAX_FILE_SIZE_BYTES) {
+      throw new PayloadTooLargeError(`Image ${file.originalname} exceeds the maximum allowed size of 5MB`);
+    }
+
+    // Verify magic bytes
+    const detected = detectBufferType(file.buffer);
+    if (!detected || !['image/jpeg', 'image/png', 'image/webp'].includes(detected.mime)) {
+      throw new ValidationError(
+        `File ${file.originalname} is not a valid image format. Only JPEG, PNG, and WebP images are accepted.`
+      );
+    }
+
+    const sanitizedBase = (slugOrTitle || file.originalname)
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9_-]/g, '_')
+      .slice(0, 40);
+    const uniqueId = crypto.randomBytes(6).toString('hex');
+    const publicId = `${sanitizedBase}_${uniqueId}`;
+
+    if (!this.isConfigured()) {
+      logger.warn(
+        { publicId, filename: file.originalname },
+        'Cloudinary credentials not configured; using secure mock storage identifier for program image'
+      );
+      return {
+        publicId: `mock_${publicId}`,
+        secureUrl: `https://res.cloudinary.com/mock-erkab/${publicId}.${detected.ext}`,
+        format: detected.ext,
+        bytes: file.size,
+      };
+    }
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          public_id: publicId,
+          resource_type: 'image',
+          type: 'upload', // Public delivery for website visitors
+          folder: 'erkab/programs',
+          overwrite: true,
+          transformation: [
+            { width: 1200, height: 800, crop: 'limit', quality: 'auto', fetch_format: 'auto' },
+          ],
+        },
+        (error, result) => {
+          if (error || !result) {
+            logger.error({ error: error?.message, publicId }, 'Cloudinary program image upload failed');
+            return reject(new Error('Failed to upload program image to Cloudinary'));
+          }
+
+          logger.info(
+            { publicId: result.public_id, secureUrl: result.secure_url, bytes: result.bytes },
+            'Successfully uploaded program image to Cloudinary'
+          );
+
+          resolve({
+            publicId: result.public_id,
+            secureUrl: result.secure_url,
+            format: result.format || detected.ext,
+            bytes: result.bytes,
+            width: result.width,
+            height: result.height,
+          });
+        }
+      );
+
+      uploadStream.end(file.buffer);
+    });
+  }
+
+  /**
+   * Delete public program image from Cloudinary (used during replacement or cleanup)
+   */
+  public static async deleteProgramImage(publicIdOrUrl: string): Promise<void> {
+    const publicId = this.extractPublicIdFromUrl(publicIdOrUrl);
+    if (!publicId || publicId.startsWith('mock_') || !publicId.startsWith('erkab/programs/')) {
+      return;
+    }
+
+    if (!this.isConfigured()) return;
+
+    try {
+      await cloudinary.uploader.destroy(publicId, {
+        resource_type: 'image',
+        type: 'upload',
+      });
+      logger.info({ publicId }, 'Cleaned up old program image from Cloudinary');
+    } catch (err: any) {
+      logger.warn({ publicId, error: err.message }, 'Failed to delete old program image from Cloudinary');
+    }
+  }
+
+  /**
+   * Extract Cloudinary publicId from a secureUrl or raw identifier
+   */
+  public static extractPublicIdFromUrl(urlOrId: string): string {
+    if (!urlOrId) return '';
+    if (!urlOrId.startsWith('http')) return urlOrId;
+    try {
+      const match = urlOrId.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[a-zA-Z0-9]+)?$/);
+      return match ? match[1] : '';
+    } catch {
+      return '';
+    }
+  }
+
   public static generateSignedReviewUrl(
     publicId: string,
     resourceType = 'raw',
@@ -282,14 +423,30 @@ export class CloudinaryService {
     }
 
     const https = await import('https');
-    return new Promise((resolve, reject) => {
-      https.get(downloadUrl, (streamRes) => {
-        resolve({
-          stream: streamRes,
-          statusCode: streamRes.statusCode || 200,
-          headers: streamRes.headers,
-        });
-      }).on('error', (err) => reject(err));
-    });
+    const http = await import('http');
+
+    const fetchWithRedirect = (targetUrl: string, redirectsLeft = 3): Promise<{ stream: any; statusCode: number; headers: Record<string, any> }> => {
+      return new Promise((resolve, reject) => {
+        const client = targetUrl.startsWith('https:') ? https : http;
+        client.get(targetUrl, (streamRes) => {
+          if (
+            streamRes.statusCode &&
+            streamRes.statusCode >= 300 &&
+            streamRes.statusCode < 400 &&
+            streamRes.headers.location &&
+            redirectsLeft > 0
+          ) {
+            return resolve(fetchWithRedirect(streamRes.headers.location, redirectsLeft - 1));
+          }
+          resolve({
+            stream: streamRes,
+            statusCode: streamRes.statusCode || 200,
+            headers: streamRes.headers,
+          });
+        }).on('error', (err) => reject(err));
+      });
+    };
+
+    return fetchWithRedirect(downloadUrl);
   }
 }

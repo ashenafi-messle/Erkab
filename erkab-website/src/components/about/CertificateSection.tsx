@@ -6,6 +6,8 @@ import { Container } from '../layout/Container';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { ShieldCheck, FileText, CheckCircle, ExternalLink, X, MapPin } from 'lucide-react';
 
+const CERTIFICATE_IMAGE_URL = 'https://res.cloudinary.com/oydsg6yc/image/upload/v1792323293/5954232872233275954.jpg';
+
 export function CertificateSection() {
   const [modalOpen, setModalOpen] = useState(false);
   const { t } = useLanguage();
@@ -73,7 +75,7 @@ export function CertificateSection() {
                 }}
               >
                 <Image
-                  src="/images/organization/official-certificate-preview.svg"
+                  src={CERTIFICATE_IMAGE_URL}
                   alt={`Official institutional recognition certificate preview for ${t.brand.name}`}
                   fill
                   sizes="(max-width: 991px) 100vw, 550px"
@@ -215,7 +217,7 @@ export function CertificateSection() {
                 }}
               >
                 <Image
-                  src="/images/organization/official-certificate-preview.svg"
+                  src={CERTIFICATE_IMAGE_URL}
                   alt={`Full official certificate document for ${t.brand.name}`}
                   fill
                   sizes="(max-width: 850px) 100vw, 750px"

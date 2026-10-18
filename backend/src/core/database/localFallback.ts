@@ -288,6 +288,30 @@ export function initializeLocalSchema() {
       updatedAt TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS ContactMessage (
+      id TEXT PRIMARY KEY,
+      referenceCode TEXT UNIQUE NOT NULL,
+      fullName TEXT NOT NULL,
+      email TEXT NOT NULL,
+      phone TEXT,
+      subject TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'GENERAL_INQUIRY',
+      message TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'NEW',
+      priority TEXT NOT NULL DEFAULT 'NORMAL',
+      assignedAdminId TEXT,
+      internalNotes TEXT,
+      readAt TEXT,
+      resolvedAt TEXT,
+      resolvedByAdminId TEXT,
+      createdAt TEXT,
+      updatedAt TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_contact_ref ON ContactMessage(referenceCode);
+    CREATE INDEX IF NOT EXISTS idx_contact_status ON ContactMessage(status);
+    CREATE INDEX IF NOT EXISTS idx_contact_created ON ContactMessage(createdAt);
+
   `);
 
   seedInitialDataIfEmpty();

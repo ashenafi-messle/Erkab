@@ -9,7 +9,7 @@ export function SuccessRedirectClient({ targetRef }: { targetRef?: string }) {
 
   useEffect(() => {
     if (targetRef) {
-      router.replace(`/tutoring/payment/${targetRef}/success`);
+      router.replace(`/tutoring/payment/${targetRef}`);
     } else {
       router.replace('/tutoring');
     }
