@@ -5,7 +5,11 @@ export class AdminDashboardController {
   public static async getSummary(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await AdminDashboardService.getSummary();
-      res.json({ success: true, ...result });
+      res.json({
+        success: true,
+        data: result,
+        ...result,
+      });
     } catch (err) {
       next(err);
     }

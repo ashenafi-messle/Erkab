@@ -56,3 +56,29 @@ export const uploadProgramImage = multer({
     cb(null, true);
   },
 });
+
+export const uploadNewsImage = multer({
+  storage,
+  limits: {
+    fileSize: env.MAX_FILE_SIZE_BYTES, // 5MB
+    files: 10,
+  },
+  fileFilter: (_req, file, cb) => {
+    const allowedImageMimes = [
+      'image/jpeg',
+      'image/png',
+      'image/jpg',
+      'image/webp',
+    ];
+
+    if (!allowedImageMimes.includes(file.mimetype)) {
+      return cb(
+        new ValidationError(
+          `Invalid image format for ${file.originalname}. Only JPEG, PNG, and WebP images are allowed.`
+        )
+      );
+    }
+
+    cb(null, true);
+  },
+});

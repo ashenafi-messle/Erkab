@@ -99,6 +99,12 @@ export function initializeLocalSchema() {
       status TEXT DEFAULT 'PENDING',
       paymentMode TEXT DEFAULT 'DEMO',
       transactionId TEXT UNIQUE,
+      receiptUrl TEXT,
+      receiptSubmittedAt TEXT,
+      verifiedBy TEXT,
+      verifiedByName TEXT,
+      verifiedAt TEXT,
+      rejectionReason TEXT,
       createdAt TEXT,
       updatedAt TEXT
     );
@@ -216,6 +222,17 @@ export function initializeLocalSchema() {
       authorName TEXT,
       createdAt TEXT,
       updatedAt TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS NewsArticleImage (
+      id TEXT PRIMARY KEY,
+      articleId TEXT NOT NULL,
+      imageUrl TEXT NOT NULL,
+      cloudinaryPublicId TEXT,
+      caption TEXT,
+      displayOrder INTEGER NOT NULL DEFAULT 0,
+      createdAt TEXT,
+      FOREIGN KEY (articleId) REFERENCES NewsArticle(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS AdminUser (

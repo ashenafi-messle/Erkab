@@ -67,6 +67,7 @@ export const tutorApplicationSchema = z
     qualifications: z.string().trim().optional(),
     experience: z.string().trim().optional(),
     hourlyRate: z.string().trim().optional(),
+    receiptUrl: z.string().trim().optional(),
   })
   .superRefine((data, ctx) => {
     const level = (data.educationLevel || '').trim().toLowerCase();
@@ -91,9 +92,81 @@ export const tutorApplicationSchema = z
         message: 'Invalid grade level. School-level tutoring must be one of Grade 1 through Grade 12.',
       });
     }
+
+    if (data.receiptUrl) {
+      const res = validateReceiptUrlSafe(data.receiptUrl);
+      if (!res.valid) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['receiptUrl'],
+          message: res.error,
+        });
+      }
+    }
   });
+
+export function validateReceiptUrlSafe(url: string): { valid: boolean; error: string } {
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    return { valid: false, error: 'Bank receipt or transaction verification link is required.' };
+  }
+
+  const trimmed = url.trim();
+
+  if (trimmed.length > 2048) {
+    return { valid: false, error: 'Receipt URL exceeds maximum allowed length of 2048 characters.' };
+  }
+
+  if (/[\x00-\x1F\x7F\s]/.test(trimmed)) {
+    return { valid: false, error: 'Receipt URL contains invalid characters or whitespace.' };
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+
+    if (parsed.protocol !== 'https:') {
+      return { valid: false, error: 'Receipt URL must use a secure HTTPS protocol (https://).' };
+    }
+
+    if (parsed.username || parsed.password) {
+      return { valid: false, error: 'Receipt URL must not contain embedded authentication credentials.' };
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+    if (
+      !hostname ||
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '::1' ||
+      hostname.endsWith('.local') ||
+      !hostname.includes('.')
+    ) {
+      return { valid: false, error: 'Receipt URL must contain a valid public domain name.' };
+    }
+
+    return { valid: true, error: '' };
+  } catch {
+    return { valid: false, error: 'Receipt URL is malformed. Please enter a valid HTTPS URL.' };
+  }
+}
+
+export const receiptSubmissionSchema = z.object({
+  receiptUrl: z
+    .string()
+    .trim()
+    .min(1, 'Bank receipt or transaction verification link is required.')
+    .superRefine((val, ctx) => {
+      const result = validateReceiptUrlSafe(val);
+      if (!result.valid) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: result.error,
+        });
+      }
+    }),
+});
 
 export const confirmPaymentSchema = z.object({
   simulatedOutcome: z.enum(['SUCCESS', 'FAILURE']).optional().default('SUCCESS'),
 });
+
 

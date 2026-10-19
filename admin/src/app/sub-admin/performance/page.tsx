@@ -6,6 +6,7 @@ import { StatCard } from '../../../components/common/StatCard';
 import { DataTable, Column } from '../../../components/common/DataTable';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { apiClient } from '../../../lib/api/client';
+import { useAuth } from '../../../context/AuthContext';
 import {
   LineChart,
   Gauge,
@@ -32,6 +33,7 @@ interface PerformanceMetrics {
 }
 
 export default function PerformanceMetricsPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -50,8 +52,9 @@ export default function PerformanceMetricsPage() {
   };
 
   useEffect(() => {
+    if (!user || authLoading) return;
     fetchMetrics();
-  }, []);
+  }, [user, authLoading]);
 
   const errorColumns: Column<any>[] = [
     {

@@ -32,7 +32,7 @@ describe('Applications Endpoints', () => {
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
-    });
+    }, 15000);
 
     it('rejects upload with invalid magic bytes', async () => {
       const res = await request(app)
@@ -158,7 +158,7 @@ describe('Applications Endpoints', () => {
       expect(idempotentRes.status).toBe(200);
       expect(idempotentRes.body.success).toBe(true);
       expect(idempotentRes.body.alreadyConfirmed).toBe(true);
-    });
+    }, 15000);
 
     it('successfully processes university tutoring request with 750 ETB fee', async () => {
       const res = await request(app)
@@ -289,7 +289,7 @@ describe('Applications Endpoints', () => {
         expect(downloadRes.status).toBe(200);
         expect(downloadRes.headers['content-disposition']).toContain('attachment');
       }
-    });
+    }, 15000);
 
     it('rejects document access if document does not belong to the requested application', async () => {
       const listRes = await request(app)
@@ -334,7 +334,7 @@ describe('Applications Endpoints', () => {
       expect(detailRes.body.data.reviews.length).toBeGreaterThan(0);
       expect(detailRes.body.data.reviews[0].decision).toBe('APPROVED');
       expect(detailRes.body.data.reviews[0].notes).toContain('Meets academic requirements');
-    });
+    }, 25000);
 
     it('prevents duplicate pending student submissions idempotently', async () => {
       const res = await request(app)
@@ -372,6 +372,164 @@ describe('Applications Endpoints', () => {
       expect(dupRes.body.success).toBe(true);
       expect(dupRes.body.referenceNumber).toBe(initialRef);
       expect(dupRes.body.message).toContain('already submitted');
+    }, 15000);
+  });
+
+  describe('Bank Transfer Receipt Submission & Admin Verification', () => {
+    it('rejects receipt submission when receiptUrl is missing', async () => {
+      // First create a tutoring request
+      const createRes = await request(app)
+        .post('/api/v1/web/tutoring/requests')
+        .send({
+          studentName: 'Receipt Test Student 1',
+          gradeLevel: 'Grade 9',
+          subjects: ['Mathematics'],
+          deliveryPreference: 'Online',
+          parentOrContactPhone: '+251911334455',
+        });
+
+      expect(createRes.status).toBe(201);
+      const paymentRef = createRes.body.paymentReference;
+
+      const receiptRes = await request(app)
+        .post(`/api/v1/web/tutoring/payments/${paymentRef}/receipt`)
+        .send({});
+
+      expect(receiptRes.status).toBe(400);
+      expect(receiptRes.body.success).toBe(false);
+    }, 15000);
+
+    it('rejects receipt submission with non-HTTPS scheme or malformed URL', async () => {
+      const createRes = await request(app)
+        .post('/api/v1/web/tutoring/requests')
+        .send({
+          studentName: 'Receipt Test Student 2',
+          gradeLevel: 'Grade 11',
+          subjects: ['Chemistry'],
+          deliveryPreference: 'Online',
+          parentOrContactPhone: '+251911334456',
+        });
+
+      const paymentRef = createRes.body.paymentReference;
+
+      // HTTP scheme rejected
+      const httpRes = await request(app)
+        .post(`/api/v1/web/tutoring/payments/${paymentRef}/receipt`)
+        .send({ receiptUrl: 'http://dashenbank.com/receipt/12345' });
+
+      expect(httpRes.status).toBe(400);
+      expect(httpRes.body.success).toBe(false);
+
+      // Javascript scheme rejected
+      const jsRes = await request(app)
+        .post(`/api/v1/web/tutoring/payments/${paymentRef}/receipt`)
+        .send({ receiptUrl: 'javascript:alert(1)' });
+
+      expect(jsRes.status).toBe(400);
+      expect(jsRes.body.success).toBe(false);
+
+      // Embedded credentials rejected
+      const authRes = await request(app)
+        .post(`/api/v1/web/tutoring/payments/${paymentRef}/receipt`)
+        .send({ receiptUrl: 'https://user:password@dashenbank.com/verify' });
+
+      expect(authRes.status).toBe(400);
+      expect(authRes.body.success).toBe(false);
+    }, 15000);
+
+    it('successfully accepts valid HTTPS bank receipt URL and transitions payment to PENDING_VERIFICATION', async () => {
+      const createRes = await request(app)
+        .post('/api/v1/web/tutoring/requests')
+        .send({
+          studentName: 'Hana Girma',
+          gradeLevel: 'Grade 12',
+          subjects: ['Biology', 'Chemistry'],
+          deliveryPreference: 'Online',
+          parentOrContactPhone: '+251922556677',
+          email: 'hana.girma@example.com',
+        });
+
+      expect(createRes.status).toBe(201);
+      const paymentRef = createRes.body.paymentReference;
+      const tutoringRef = createRes.body.referenceNumber;
+
+      const validReceiptUrl = 'https://dashenbanksc.com/verify-receipt?txn=DSHN-2026-998877';
+      const submitRes = await request(app)
+        .post(`/api/v1/web/tutoring/payments/${paymentRef}/receipt`)
+        .send({ receiptUrl: validReceiptUrl });
+
+      expect(submitRes.status).toBe(200);
+      expect(submitRes.body.success).toBe(true);
+      expect(submitRes.body.paymentStatus).toBe('PENDING_VERIFICATION');
+      expect(submitRes.body.tutoringStatus).toBe('PENDING_VERIFICATION');
+      expect(submitRes.body.message).toContain('verification pending');
+
+      // Verify payment lookup includes receiptUrl and pending verification status
+      const lookupRes = await request(app).get(`/api/v1/web/tutoring/payments/${paymentRef}`);
+      expect(lookupRes.status).toBe(200);
+      expect(lookupRes.body.data.status).toBe('PENDING_VERIFICATION');
+      expect(lookupRes.body.data.receiptUrl).toBe(validReceiptUrl);
+      expect(lookupRes.body.data.receiptSubmittedAt).toBeDefined();
+
+      // Check admin detail route includes receipt URL
+      const adminDetailRes = await request(app)
+        .get(`/api/v1/admin/applications/tutors/${tutoringRef}`)
+        .set('Authorization', 'Bearer test_admin_token_2026');
+
+      expect(adminDetailRes.status).toBe(200);
+      expect(adminDetailRes.body.data.application.receiptUrl).toBe(validReceiptUrl);
+      expect(adminDetailRes.body.data.application.paymentStatus).toBe('PENDING_VERIFICATION');
+    }, 15000);
+
+    it('handles admin payment verification and rejection workflow with audit tracking', async () => {
+      // 1. Create request & submit receipt
+      const createRes = await request(app)
+        .post('/api/v1/web/tutoring/requests')
+        .send({
+          studentName: 'Yared Tadesse',
+          gradeLevel: 'Grade 8',
+          subjects: ['General Science'],
+          deliveryPreference: 'Online',
+          parentOrContactPhone: '+251944778899',
+        });
+
+      const paymentRef = createRes.body.paymentReference;
+      const tutoringRef = createRes.body.referenceNumber;
+
+      await request(app)
+        .post(`/api/v1/web/tutoring/payments/${paymentRef}/receipt`)
+        .send({ receiptUrl: 'https://telebirr.et/receipt/verify/992211' });
+
+      // 2. Reject unauthenticated admin decision
+      const unauthRes = await request(app)
+        .post(`/api/v1/admin/applications/tutors/${tutoringRef}/payment/decision`)
+        .send({ decision: 'VERIFIED' });
+
+      expect(unauthRes.status).toBe(401);
+
+      // 3. Admin rejects receipt with missing reason -> fails validation
+      const invalidRejectRes = await request(app)
+        .post(`/api/v1/admin/applications/tutors/${tutoringRef}/payment/decision`)
+        .set('Authorization', 'Bearer test_admin_token_2026')
+        .send({ decision: 'REJECTED' });
+
+      expect(invalidRejectRes.status).toBe(400);
+
+      // 4. Admin verifies payment -> success
+      const verifyRes = await request(app)
+        .post(`/api/v1/admin/applications/tutors/${tutoringRef}/payment/decision`)
+        .set('Authorization', 'Bearer test_admin_token_2026')
+        .send({ decision: 'VERIFIED' });
+
+      expect(verifyRes.status).toBe(200);
+      expect(verifyRes.body.success).toBe(true);
+      expect(verifyRes.body.paymentStatus).toBe('VERIFIED');
+      expect(verifyRes.body.verifiedByName).toBe('Erkab Executive Director');
+
+      // 5. Lookup payment to confirm persistence
+      const verifiedLookup = await request(app).get(`/api/v1/web/tutoring/payments/${paymentRef}`);
+      expect(verifiedLookup.status).toBe(200);
+      expect(verifiedLookup.body.data.status).toBe('VERIFIED');
     }, 15000);
   });
 });

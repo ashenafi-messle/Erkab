@@ -1,0 +1,20 @@
+# ==============================================================================
+# Erkab SSL Bootstrap Configuration (Port 80 Only)
+# Use this configuration ONLY during initial server setup before obtaining SSL certs
+# ==============================================================================
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name erkab.org www.erkab.org admin.erkab.org api.erkab.org;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        allow all;
+    }
+
+    location / {
+        return 200 "Erkab Cloud Gateway is initializing SSL certificates. Please stand by.\n";
+        add_header Content-Type text/plain;
+    }
+}

@@ -5,6 +5,7 @@ import { AdminShell } from '../../../components/layout/AdminShell';
 import { DataTable, Column } from '../../../components/common/DataTable';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { apiClient } from '../../../lib/api/client';
+import { useAuth } from '../../../context/AuthContext';
 import {
   Wrench,
   AlertTriangle,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 
 export default function MaintenancePage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [incidents, setIncidents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showLogModal, setShowLogModal] = useState(false);
@@ -46,8 +48,9 @@ export default function MaintenancePage() {
   };
 
   useEffect(() => {
+    if (!user || authLoading) return;
     fetchIncidents();
-  }, []);
+  }, [user, authLoading]);
 
   const handleCreateIncident = async (e: React.FormEvent) => {
     e.preventDefault();

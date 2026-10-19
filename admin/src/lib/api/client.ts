@@ -22,16 +22,22 @@ export class ApiError extends Error {
   }
 }
 
-// In-memory token storage (also synced with sessionStorage for page refreshes)
+// In-memory token storage (synced with both sessionStorage and localStorage for persistence and multi-tab sync)
 let memoryToken: string | null = null;
 
 export const setAuthToken = (token: string | null) => {
   memoryToken = token;
   if (typeof window !== 'undefined') {
-    if (token) {
-      sessionStorage.setItem('erkab_admin_token', token);
-    } else {
-      sessionStorage.removeItem('erkab_admin_token');
+    try {
+      if (token) {
+        sessionStorage.setItem('erkab_admin_token', token);
+        localStorage.setItem('erkab_admin_token', token);
+      } else {
+        sessionStorage.removeItem('erkab_admin_token');
+        localStorage.removeItem('erkab_admin_token');
+      }
+    } catch {
+      // Ignore storage quota or access errors in restricted browser contexts
     }
   }
 };
@@ -39,7 +45,11 @@ export const setAuthToken = (token: string | null) => {
 export const getAuthToken = (): string | null => {
   if (memoryToken) return memoryToken;
   if (typeof window !== 'undefined') {
-    memoryToken = sessionStorage.getItem('erkab_admin_token');
+    try {
+      memoryToken = sessionStorage.getItem('erkab_admin_token') || localStorage.getItem('erkab_admin_token');
+    } catch {
+      memoryToken = null;
+    }
   }
   return memoryToken;
 };

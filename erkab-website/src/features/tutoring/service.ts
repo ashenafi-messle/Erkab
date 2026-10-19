@@ -43,7 +43,7 @@ export interface TutoringPaymentDetails {
   paymentReference: string;
   amount: number;
   currency: string;
-  status: 'PENDING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED';
+  status: 'PENDING' | 'PENDING_VERIFICATION' | 'VERIFIED' | 'REJECTED' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED';
   tutoringReference: string;
   studentName: string;
   gradeLevel: string;
@@ -51,6 +51,18 @@ export interface TutoringPaymentDetails {
   deliveryPreference: string;
   tutoringStatus: string;
   createdAt: string;
+  receiptUrl?: string;
+  receiptSubmittedAt?: string;
+}
+
+export interface ReceiptSubmissionResponse {
+  success: boolean;
+  message: string;
+  paymentReference: string;
+  tutoringReference: string;
+  paymentStatus: string;
+  tutoringStatus: string;
+  receiptSubmittedAt: string;
 }
 
 export async function submitTutoringRequest(data: TutoringRequestData): Promise<TutoringSubmissionResponse> {
@@ -71,4 +83,17 @@ export async function getTutoringPayment(reference: string): Promise<TutoringPay
     }
   );
   return res.data;
+}
+
+export async function submitTutoringReceipt(
+  paymentReference: string,
+  receiptUrl: string
+): Promise<ReceiptSubmissionResponse> {
+  return apiClient<ReceiptSubmissionResponse>(
+    API_ENDPOINTS.TUTORING.RECEIPT(paymentReference),
+    {
+      method: 'POST',
+      body: JSON.stringify({ receiptUrl }),
+    }
+  );
 }

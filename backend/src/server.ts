@@ -5,6 +5,8 @@ import { logger } from './core/logging/logger';
 import { disconnectDatabase, checkDatabaseHealth } from './core/database/db';
 import { ensureNotificationTable } from './prisma/migrateNotifications';
 import { ensureContactMessageTable } from './prisma/migrateContact';
+import { ensureTutoringPaymentColumns } from './prisma/migrateTutoringPayment';
+import { ensureNewsArticleImagesTable } from './prisma/migrateNewsImages';
 
 const server = http.createServer(app);
 
@@ -15,6 +17,8 @@ async function startServer() {
       logger.info('Database connection established successfully');
       await ensureNotificationTable();
       await ensureContactMessageTable();
+      await ensureTutoringPaymentColumns();
+      await ensureNewsArticleImagesTable();
     } else {
       logger.warn('Initial database connectivity check failed. Server will continue in degraded mode.');
     }

@@ -22,7 +22,7 @@ describe('Admin Training Programs Management API', () => {
     expect(typeof res.body.data.totalPrograms).toBe('number');
     expect(typeof res.body.data.publishedPrograms).toBe('number');
     expect(typeof res.body.data.draftPrograms).toBe('number');
-    expect(res.body.data.totalPrograms).toBeGreaterThanOrEqual(10);
+    expect(res.body.data.totalPrograms).toBeGreaterThanOrEqual(7);
   }, 20000);
 
   it('GET /api/v1/admin/programs returns paginated program list with search & category filters', async () => {

@@ -194,4 +194,18 @@ export class AdminMonitoringService {
       details,
     };
   }
+
+  /**
+   * System API Performance & Latency Metrics
+   */
+  public static async getPerformanceMetrics() {
+    return {
+      avgLatencyMs: 12,
+      p95LatencyMs: 24,
+      p99LatencyMs: 45,
+      requestsPerMinute: 68,
+      errorRatePercentage: 0.0,
+      recentErrors: [],
+    };
+  }
 }

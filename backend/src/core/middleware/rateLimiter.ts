@@ -6,6 +6,7 @@ export const generalLimiter = rateLimit({
   limit: env.RATE_LIMIT_MAX_REQUESTS,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test' || env.NODE_ENV === 'test',
   message: {
     success: false,
     error: {
@@ -20,6 +21,7 @@ export const applicationSubmitLimiter = rateLimit({
   limit: 15, // max 15 submissions per 15 min per IP
   standardHeaders: 'draft-8',
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test' || env.NODE_ENV === 'test',
   message: {
     success: false,
     error: {
@@ -34,6 +36,7 @@ export const contactSubmitLimiter = rateLimit({
   limit: 10, // max 10 submissions per 15 min per IP
   standardHeaders: 'draft-8',
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test' || env.NODE_ENV === 'test',
   message: {
     success: false,
     error: {

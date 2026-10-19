@@ -16,6 +16,7 @@ router.get('/:type/:id/documents/:docId/download', AdminApplicationsController.d
 // Status and decision updates (requires applications:write permission or SUPER_ADMIN)
 router.post('/:type/:id/decision', requirePermission('applications:write'), AdminApplicationsController.recordDecision);
 router.patch('/:type/:id/status', requirePermission('applications:write'), AdminApplicationsController.recordDecision);
+router.post('/:type/:id/payment/decision', requirePermission('applications:write'), AdminApplicationsController.recordPaymentDecision);
 
 // Notification tracking and retries
 router.get('/:type/:id/notifications', AdminApplicationsController.listNotifications);

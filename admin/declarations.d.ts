@@ -80,4 +80,10 @@ declare module 'lucide-react' {
   export const Sliders: LucideIcon;
   export const RefreshCw: LucideIcon;
   export const WifiOff: LucideIcon;
+  export const Edit: LucideIcon;
+  export const Edit3: LucideIcon;
+  export const Upload: LucideIcon;
+  export const Image: LucideIcon;
+  export const ImageIcon: LucideIcon;
+  export const Star: LucideIcon;
 }

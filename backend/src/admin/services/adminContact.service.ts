@@ -32,7 +32,11 @@ export class AdminContactService {
     }
 
     if (options.category && options.category !== 'ALL') {
-      params.push(options.category);
+      let cat = options.category;
+      if (cat === 'GENERAL') cat = 'GENERAL_INQUIRY';
+      if (cat === 'SCHOLARSHIPS') cat = 'SCHOLARSHIP_APPLICATION';
+      if (cat === 'PARTNERSHIPS') cat = 'PARTNERSHIP_MENTORSHIP';
+      params.push(cat);
       whereClauses.push(`"category" = $${params.length}`);
     }
 
@@ -66,6 +70,7 @@ export class AdminContactService {
 
     return {
       messages,
+      items: messages,
       pagination: {
         page,
         limit,
@@ -100,7 +105,16 @@ export class AdminContactService {
       counts.TOTAL += count;
     }
 
-    return counts;
+    return {
+      ...counts,
+      total: counts.TOTAL,
+      newCount: counts.NEW,
+      inProgressCount: counts.IN_PROGRESS,
+      waitingCount: counts.WAITING_FOR_VISITOR,
+      resolvedCount: counts.RESOLVED,
+      closedCount: counts.CLOSED,
+      spamCount: counts.SPAM,
+    };
   }
 
   /**

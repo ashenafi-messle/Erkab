@@ -88,6 +88,7 @@ export class AdminApplicationsService {
           u."deliveryPreference", u."locationDetails", u."qualifications",
           u."experience", u."hourlyRate", u."status", u."createdAt", u."updatedAt",
           p."paymentReference", p."status" AS "paymentStatus", p."amount" AS "paymentAmount",
+          p."receiptUrl", p."receiptSubmittedAt", p."verifiedBy", p."verifiedByName", p."verifiedAt", p."rejectionReason",
           (SELECT COUNT(*) FROM "public"."ApplicationDocument" d WHERE d."tutorApplicationId" = u."id") AS "documentCount"
         FROM "public"."TutorApplication" u
         LEFT JOIN "public"."TutoringPayment" p ON u."id" = p."tutorApplicationId"
@@ -186,7 +187,13 @@ export class AdminApplicationsService {
            p."status" AS "paymentStatus", 
            p."amount" AS "paymentAmount",
            p."currency" AS "paymentCurrency",
-           p."paymentMode"
+           p."paymentMode",
+           p."receiptUrl",
+           p."receiptSubmittedAt",
+           p."verifiedBy",
+           p."verifiedByName",
+           p."verifiedAt",
+           p."rejectionReason"
          FROM "public"."TutorApplication" u
          LEFT JOIN "public"."TutoringPayment" p ON u."id" = p."tutorApplicationId"
          WHERE u."id" = $1 OR u."referenceNumber" = $1`,
@@ -670,5 +677,113 @@ export class AdminApplicationsService {
       adminUser,
       ipAddress,
     });
+  }
+
+  public static async recordPaymentVerificationDecision(params: {
+    applicationId: string;
+    reviewerId: string;
+    reviewerName: string;
+    decision: 'VERIFIED' | 'REJECTED';
+    rejectionReason?: string;
+    ipAddress?: string;
+  }) {
+    const { applicationId, reviewerId, reviewerName, decision, rejectionReason, ipAddress } = params;
+
+    const normalizedDecision = decision?.toUpperCase()?.trim();
+    if (normalizedDecision !== 'VERIFIED' && normalizedDecision !== 'REJECTED') {
+      throw new ValidationError(`Invalid payment verification decision: ${decision}. Allowed: VERIFIED, REJECTED`);
+    }
+
+    if (normalizedDecision === 'REJECTED' && (!rejectionReason || !rejectionReason.trim())) {
+      throw new ValidationError('A rejection reason is required when rejecting a payment receipt.');
+    }
+
+    const application = await queryOne(
+      `SELECT u."id", u."referenceNumber", u."studentOrApplicantName", u."email", u."status",
+              p."id" AS "paymentId", p."paymentReference", p."status" AS "paymentStatus", p."receiptUrl", p."amount", p."currency"
+       FROM "public"."TutorApplication" u
+       LEFT JOIN "public"."TutoringPayment" p ON u."id" = p."tutorApplicationId"
+       WHERE u."id" = $1 OR u."referenceNumber" = $1`,
+      [applicationId]
+    );
+
+    if (!application) {
+      throw new NotFoundError(`Tutoring application '${applicationId}' not found`);
+    }
+
+    if (!application.paymentId) {
+      throw new ValidationError(`No tutoring payment record found for application '${applicationId}'`);
+    }
+
+    const auditId = crypto.randomUUID();
+
+    await transaction(async (client) => {
+      if (normalizedDecision === 'VERIFIED') {
+        await client.query(
+          `UPDATE "public"."TutoringPayment"
+           SET "status" = 'VERIFIED',
+               "verifiedBy" = $1,
+               "verifiedByName" = $2,
+               "verifiedAt" = NOW(),
+               "rejectionReason" = NULL,
+               "updatedAt" = NOW()
+           WHERE "id" = $3`,
+          [reviewerId, reviewerName, application.paymentId]
+        );
+
+        if (application.status === 'PENDING_PAYMENT' || application.status === 'PENDING_VERIFICATION') {
+          await client.query(
+            `UPDATE "public"."TutorApplication"
+             SET "status" = 'UNDER_REVIEW',
+                 "updatedAt" = NOW()
+             WHERE "id" = $1`,
+            [application.id]
+          );
+        }
+      } else {
+        await client.query(
+          `UPDATE "public"."TutoringPayment"
+           SET "status" = 'REJECTED',
+               "verifiedBy" = $1,
+               "verifiedByName" = $2,
+               "verifiedAt" = NOW(),
+               "rejectionReason" = $3,
+               "updatedAt" = NOW()
+           WHERE "id" = $4`,
+          [reviewerId, reviewerName, (rejectionReason || '').trim().slice(0, 500), application.paymentId]
+        );
+      }
+
+      await client.query(
+        `INSERT INTO "public"."AdminAuditLog" (
+          "id", "adminUserId", "adminName", "action", "resource", "details", "ipAddress", "createdAt"
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+        [
+          auditId,
+          reviewerId,
+          reviewerName,
+          'PAYMENT_VERIFICATION_DECISION',
+          'TutoringPayment',
+          JSON.stringify({
+            applicationId: application.id,
+            referenceNumber: application.referenceNumber,
+            paymentReference: application.paymentReference,
+            decision: normalizedDecision,
+            rejectionReason: normalizedDecision === 'REJECTED' ? rejectionReason?.trim() : undefined,
+          }),
+          ipAddress || '127.0.0.1',
+        ]
+      );
+    });
+
+    return {
+      success: true,
+      message: normalizedDecision === 'VERIFIED'
+        ? `Payment for application ${application.referenceNumber} has been verified.`
+        : `Payment receipt for application ${application.referenceNumber} has been marked as rejected.`,
+      paymentStatus: normalizedDecision,
+      verifiedAt: new Date().toISOString(),
+      verifiedByName: reviewerName,
+    };
   }
 }

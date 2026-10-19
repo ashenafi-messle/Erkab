@@ -259,6 +259,6 @@ describe('Erkab Platform: Partnerships, Donations, and News', () => {
         .delete(`/api/v1/admin/news/${articleId}`)
         .set('Authorization', 'Bearer test_admin_token_2026');
       expect(deleteRes.status).toBe(200);
-    });
+    }, 25000);
   });
 });

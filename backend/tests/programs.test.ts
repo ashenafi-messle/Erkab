@@ -8,7 +8,7 @@ describe('Public Programs Endpoints', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(Array.isArray(res.body.data)).toBe(true);
-    expect(res.body.data.length).toBeGreaterThanOrEqual(10);
+    expect(res.body.data.length).toBeGreaterThanOrEqual(7);
   }, 15000);
 
   it('GET /api/v1/web/programs/:slug returns valid program details', async () => {

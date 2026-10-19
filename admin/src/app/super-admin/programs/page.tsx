@@ -5,6 +5,7 @@ import { AdminShell } from '../../../components/layout/AdminShell';
 import { StatCard } from '../../../components/common/StatCard';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { apiClient } from '../../../lib/api/client';
+import { useAuth } from '../../../context/AuthContext';
 import {
   BookOpen,
   Check,
@@ -73,6 +74,7 @@ const DEFAULT_PROGRAM_THUMB =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="%23f8fafc" stroke="%2364748b" stroke-width="1.5"><rect width="18" height="18" x="3" y="3" rx="3"/><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10"/><path d="M6 10h10"/></svg>';
 
 export default function ProgramsPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [programs, setPrograms] = useState<ProgramItem[]>([]);
   const [stats, setStats] = useState<ProgramStats>({
     total: 0,
@@ -233,12 +235,14 @@ export default function ProgramsPage() {
   }, [page, limit, search, categoryFilter, statusFilter]);
 
   useEffect(() => {
+    if (!user || authLoading) return;
     fetchStats();
-  }, []);
+  }, [user, authLoading]);
 
   useEffect(() => {
+    if (!user || authLoading) return;
     fetchPrograms();
-  }, [fetchPrograms]);
+  }, [user, authLoading, fetchPrograms]);
 
   // Open Create Modal
   const handleOpenCreate = () => {

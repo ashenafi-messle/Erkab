@@ -6,6 +6,7 @@ import { DataTable, Column } from '../../../components/common/DataTable';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { ConfirmModal } from '../../../components/common/ConfirmModal';
 import { apiClient } from '../../../lib/api/client';
+import { useAuth } from '../../../context/AuthContext';
 import {
   GraduationCap,
   Users,
@@ -25,7 +26,8 @@ import {
   Award,
   Layers,
   Search,
-  Check
+  Check,
+  DollarSign
 } from 'lucide-react';
 
 type TabType = 'students' | 'trainers' | 'tutors';
@@ -77,6 +79,7 @@ interface ApplicationDetailData {
 }
 
 export default function ApplicationsPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('students');
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,6 +116,12 @@ export default function ApplicationsPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmDecision, setConfirmDecision] = useState<string>('');
 
+  // Payment verification state (for tutoring bank transfers)
+  const [paymentUpdating, setPaymentUpdating] = useState(false);
+  const [paymentActionMessage, setPaymentActionMessage] = useState<{ text: string; success: boolean } | null>(null);
+  const [rejectPaymentModalOpen, setRejectPaymentModalOpen] = useState(false);
+  const [paymentRejectionReason, setPaymentRejectionReason] = useState('');
+
   const fetchApplications = useCallback(async (tab: TabType, status?: string, search?: string) => {
     try {
       setLoading(true);
@@ -143,8 +152,9 @@ export default function ApplicationsPage() {
   }, []);
 
   useEffect(() => {
+    if (!user || authLoading) return;
     fetchApplications(activeTab, statusFilter, searchQuery);
-  }, [activeTab, statusFilter, searchQuery, fetchApplications]);
+  }, [user, authLoading, activeTab, statusFilter, searchQuery, fetchApplications]);
 
   // Fetch full details when an application is opened for review
   const handleOpenReview = async (app: any) => {
@@ -263,6 +273,53 @@ export default function ApplicationsPage() {
   const promptStatusUpdate = (decision: string) => {
     setConfirmDecision(decision);
     setConfirmOpen(true);
+  };
+
+  const handlePaymentDecision = async (decision: 'VERIFIED' | 'REJECTED', reason?: string) => {
+    if (!selectedAppSummary) return;
+    try {
+      setPaymentUpdating(true);
+      setPaymentActionMessage(null);
+
+      const res = await apiClient<{
+        success: boolean;
+        message: string;
+        paymentStatus: string;
+      }>(`/admin/applications/tutors/${selectedAppSummary.id}/payment/decision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          decision,
+          rejectionReason: reason || undefined,
+        }),
+      });
+
+      setPaymentActionMessage({
+        text: res.message || `Payment marked as ${decision}.`,
+        success: true,
+      });
+
+      if (decision === 'REJECTED') {
+        setRejectPaymentModalOpen(false);
+        setPaymentRejectionReason('');
+      }
+
+      // Refresh applications list & detail modal
+      fetchApplications(activeTab, statusFilter, searchQuery);
+      const refreshed = await apiClient<{ success: boolean; data: ApplicationDetailData }>(
+        `/admin/applications/${activeTab}/${selectedAppSummary.id}`
+      );
+      if (refreshed.data) {
+        setDetailData(refreshed.data);
+      }
+    } catch (err: any) {
+      setPaymentActionMessage({
+        text: err.message || `Failed to update payment status to ${decision}.`,
+        success: false,
+      });
+    } finally {
+      setPaymentUpdating(false);
+    }
   };
 
   const formatFileSize = (bytes?: number) => {
@@ -477,21 +534,45 @@ export default function ApplicationsPage() {
     },
     {
       header: 'Payment Status',
-      render: (row) => (
-        <div>
-          {row.paymentStatus ? (
-            <span
-              className={`badge small ${
-                row.paymentStatus === 'SUCCEEDED' ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'
-              }`}
-            >
-              {row.paymentStatus === 'SUCCEEDED' ? 'PAID (DEMO)' : row.paymentStatus}
-            </span>
-          ) : (
-            <span className="badge bg-light text-muted border small">NO FEE</span>
-          )}
-        </div>
-      ),
+      render: (row) => {
+        const status = row.paymentStatus || 'AWAITING_RECEIPT';
+        const isVerified = status === 'VERIFIED' || status === 'SUCCEEDED';
+        const isPending = status === 'PENDING_VERIFICATION';
+        const isRejected = status === 'REJECTED';
+
+        return (
+          <div>
+            {isVerified ? (
+              <span className="badge bg-success-subtle text-success border border-success small d-inline-flex align-items-center gap-1">
+                <CheckCircle size={12} />
+                <span>VERIFIED</span>
+              </span>
+            ) : isPending ? (
+              <span className="badge bg-warning-subtle text-warning-emphasis border border-warning small d-inline-flex align-items-center gap-1">
+                <Clock size={12} />
+                <span>PENDING VERIFICATION</span>
+              </span>
+            ) : isRejected ? (
+              <span className="badge bg-danger-subtle text-danger border border-danger small d-inline-flex align-items-center gap-1">
+                <XCircle size={12} />
+                <span>REJECTED</span>
+              </span>
+            ) : (
+              <span className="badge bg-secondary-subtle text-secondary border small">
+                AWAITING RECEIPT
+              </span>
+            )}
+            {row.receiptUrl && (
+              <div className="mt-1">
+                <span className="badge bg-light text-primary border small d-inline-flex align-items-center gap-1">
+                  <ExternalLink size={10} />
+                  <span>Receipt Linked</span>
+                </span>
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       header: 'Status',
@@ -817,6 +898,147 @@ export default function ApplicationsPage() {
                         </div>
                       </div>
 
+                      {/* Bank Transfer Receipt & Manual Verification Card */}
+                      {activeTab === 'tutors' && (
+                        <div className="card border rounded-3 p-3 mb-4 bg-white shadow-sm">
+                          <div className="d-flex justify-content-between align-items-center mb-3">
+                            <h6 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                              <DollarSign size={16} className="text-success" />
+                              <span>Bank Transfer & Payment Verification</span>
+                            </h6>
+                            <div>
+                              {appData?.paymentStatus === 'VERIFIED' || appData?.paymentStatus === 'SUCCEEDED' ? (
+                                <span className="badge bg-success text-white small px-2 py-1 d-inline-flex align-items-center gap-1">
+                                  <CheckCircle size={13} />
+                                  <span>PAYMENT VERIFIED</span>
+                                </span>
+                              ) : appData?.paymentStatus === 'PENDING_VERIFICATION' ? (
+                                <span className="badge bg-warning text-dark small px-2 py-1 d-inline-flex align-items-center gap-1">
+                                  <Clock size={13} />
+                                  <span>PENDING MANUAL VERIFICATION</span>
+                                </span>
+                              ) : appData?.paymentStatus === 'REJECTED' ? (
+                                <span className="badge bg-danger text-white small px-2 py-1 d-inline-flex align-items-center gap-1">
+                                  <XCircle size={13} />
+                                  <span>RECEIPT REJECTED</span>
+                                </span>
+                              ) : (
+                                <span className="badge bg-secondary text-white small px-2 py-1">
+                                  AWAITING RECEIPT
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {paymentActionMessage && (
+                            <div className={`alert ${paymentActionMessage.success ? 'alert-success' : 'alert-danger'} py-2 px-3 small rounded-2 mb-3 d-flex align-items-center justify-content-between`}>
+                              <span>{paymentActionMessage.text}</span>
+                              <button type="button" className="btn-close btn-close-sm" onClick={() => setPaymentActionMessage(null)} />
+                            </div>
+                          )}
+
+                          <div className="row g-3 small">
+                            <div className="col-12 col-md-3">
+                              <span className="text-muted d-block small">Expected Amount</span>
+                              <span className="fw-bold text-dark fs-6">{appData?.paymentAmount || 500} {appData?.paymentCurrency || 'ETB'}</span>
+                            </div>
+                            <div className="col-12 col-md-3">
+                              <span className="text-muted d-block small">Payment Reference</span>
+                              <span className="font-monospace text-dark fw-medium">{appData?.paymentReference || '—'}</span>
+                            </div>
+                            <div className="col-12 col-md-3">
+                              <span className="text-muted d-block small">Receipt Submitted At</span>
+                              <span className="text-dark">
+                                {appData?.receiptSubmittedAt ? new Date(appData.receiptSubmittedAt).toLocaleString() : 'Not yet submitted'}
+                              </span>
+                            </div>
+                            <div className="col-12 col-md-3">
+                              <span className="text-muted d-block small">Verification Status</span>
+                              <span className="fw-medium text-dark">{appData?.paymentStatus || 'AWAITING_RECEIPT'}</span>
+                            </div>
+
+                            {/* Verification reviewer metadata */}
+                            {appData?.verifiedByName && (
+                              <div className="col-12">
+                                <div className="p-2 bg-light rounded border text-muted small">
+                                  <strong>Audited Reviewer:</strong> {appData.verifiedByName} on {appData.verifiedAt ? new Date(appData.verifiedAt).toLocaleString() : '—'}
+                                  {appData.rejectionReason && (
+                                    <div className="text-danger mt-1">
+                                      <strong>Internal Rejection Reason:</strong> {appData.rejectionReason}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Receipt URL & Verification Actions */}
+                            <div className="col-12">
+                              <label className="text-muted d-block small fw-semibold mb-1">Bank Receipt / Transaction Verification Link</label>
+                              {appData?.receiptUrl ? (
+                                <div className="p-3 bg-light rounded-3 border">
+                                  <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-2">
+                                    <div className="d-flex align-items-center gap-2 flex-grow-1 overflow-hidden">
+                                      <ExternalLink size={16} className="text-primary flex-shrink-0" />
+                                      <span className="badge bg-secondary-subtle text-secondary border font-monospace small">
+                                        Domain: {(() => { try { return new URL(appData.receiptUrl).hostname; } catch { return 'external-link'; } })()}
+                                      </span>
+                                      <span className="text-truncate font-monospace small text-dark">{appData.receiptUrl}</span>
+                                    </div>
+                                    <a
+                                      href={appData.receiptUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 flex-shrink-0"
+                                    >
+                                      <ExternalLink size={13} />
+                                      <span>Open Receipt Link</span>
+                                    </a>
+                                  </div>
+
+                                  <div className="p-2 bg-warning-subtle text-warning-emphasis rounded small mb-3 border border-warning-subtle d-flex align-items-start gap-2">
+                                    <AlertTriangle size={15} className="flex-shrink-0 mt-1" />
+                                    <span>
+                                      <strong>Reviewer Verification Guideline:</strong> Compare this transaction link against the organization's official bank statement or bank SMS notification for account <code>3902411503011</code>. Confirm the transaction reference and exact amount ({appData?.paymentAmount || 500} ETB) before marking as verified.
+                                    </span>
+                                  </div>
+
+                                  <div className="d-flex flex-wrap align-items-center gap-2 pt-2 border-top">
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-success d-inline-flex align-items-center gap-1"
+                                      disabled={paymentUpdating || appData?.paymentStatus === 'VERIFIED'}
+                                      onClick={() => handlePaymentDecision('VERIFIED')}
+                                    >
+                                      <CheckCircle size={14} />
+                                      <span>Verify Payment</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1"
+                                      disabled={paymentUpdating || appData?.paymentStatus === 'REJECTED'}
+                                      onClick={() => setRejectPaymentModalOpen(true)}
+                                    >
+                                      <XCircle size={14} />
+                                      <span>Reject Receipt</span>
+                                    </button>
+
+                                    {paymentUpdating && (
+                                      <div className="spinner-border spinner-border-sm text-primary ms-2" role="status" />
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="p-3 bg-light rounded border text-muted small d-flex align-items-center gap-2">
+                                  <Clock size={16} className="text-secondary" />
+                                  <span>No bank receipt link has been submitted by the student yet. Waiting for applicant to complete the transfer.</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Section 2: Supporting Documents */}
                       <div className="card border rounded-3 p-3 mb-4">
                         <div className="d-flex justify-content-between align-items-center mb-3">
@@ -1122,6 +1344,56 @@ export default function ApplicationsPage() {
         onConfirm={() => executeStatusUpdate(confirmDecision)}
         onClose={() => setConfirmOpen(false)}
       />
+
+      {/* Reject Payment Receipt Modal */}
+      {rejectPaymentModalOpen && (
+        <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title fs-6 fw-bold text-danger d-flex align-items-center gap-2">
+                  <XCircle size={18} />
+                  <span>Reject Payment Receipt</span>
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setRejectPaymentModalOpen(false)}
+                />
+              </div>
+              <div className="modal-body small">
+                <p className="text-secondary mb-2">
+                  Please provide a specific internal reason why this bank transfer receipt could not be verified (e.g. invalid transaction ID, amount mismatch, duplicate link):
+                </p>
+                <textarea
+                  className="form-control form-control-sm"
+                  rows={3}
+                  placeholder="e.g., Transaction ID does not match account records, or amount transferred is insufficient."
+                  value={paymentRejectionReason}
+                  onChange={(e) => setPaymentRejectionReason(e.target.value)}
+                />
+              </div>
+              <div className="modal-footer py-2">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-light"
+                  onClick={() => setRejectPaymentModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-danger"
+                  disabled={!paymentRejectionReason.trim() || paymentUpdating}
+                  onClick={() => handlePaymentDecision('REJECTED', paymentRejectionReason)}
+                >
+                  Confirm Rejection
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminShell>
   );
 }

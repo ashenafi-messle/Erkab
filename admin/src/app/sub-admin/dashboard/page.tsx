@@ -5,6 +5,7 @@ import { AdminShell } from '../../../components/layout/AdminShell';
 import { StatCard } from '../../../components/common/StatCard';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { apiClient } from '../../../lib/api/client';
+import { useAuth } from '../../../context/AuthContext';
 import {
   Activity,
   AlertTriangle,
@@ -31,6 +32,7 @@ interface OperationalData {
 }
 
 export default function SubAdminDashboard() {
+  const { user, isLoading: authLoading } = useAuth();
   const [data, setData] = useState<OperationalData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -49,8 +51,9 @@ export default function SubAdminDashboard() {
   };
 
   useEffect(() => {
+    if (!user || authLoading) return;
     fetchOperationalMetrics();
-  }, []);
+  }, [user, authLoading]);
 
   const formatUptime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);

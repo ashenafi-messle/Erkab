@@ -347,6 +347,116 @@ export class CloudinaryService {
   }
 
   /**
+   * Upload public news announcement image directly to Cloudinary
+   */
+  public static async uploadNewsImage(
+    file: FileToUpload,
+    slugOrTitle: string
+  ): Promise<{
+    publicId: string;
+    secureUrl: string;
+    format: string;
+    bytes: number;
+    width?: number;
+    height?: number;
+  }> {
+    if (!file || !file.buffer || file.buffer.length === 0) {
+      throw new ValidationError('Announcement image file is empty or missing');
+    }
+
+    if (file.size > env.MAX_FILE_SIZE_BYTES) {
+      throw new PayloadTooLargeError(`Image ${file.originalname} exceeds the maximum allowed size of 5MB`);
+    }
+
+    const detected = detectBufferType(file.buffer);
+    if (!detected || !['image/jpeg', 'image/png', 'image/webp'].includes(detected.mime)) {
+      throw new ValidationError(
+        `File ${file.originalname} is not a valid image format. Only JPEG, PNG, and WebP images are accepted.`
+      );
+    }
+
+    const sanitizedBase = (slugOrTitle || file.originalname)
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9_-]/g, '_')
+      .slice(0, 40);
+    const uniqueId = crypto.randomBytes(6).toString('hex');
+    const publicId = `news_${sanitizedBase}_${uniqueId}`;
+
+    if (!this.isConfigured()) {
+      logger.warn(
+        { publicId, filename: file.originalname },
+        'Cloudinary credentials not configured; using secure mock storage identifier for news image'
+      );
+      return {
+        publicId: `mock_${publicId}`,
+        secureUrl: `https://res.cloudinary.com/mock-erkab/${publicId}.${detected.ext}`,
+        format: detected.ext,
+        bytes: file.size,
+      };
+    }
+
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          public_id: publicId,
+          resource_type: 'image',
+          type: 'upload',
+          folder: 'erkab/news',
+          overwrite: true,
+          transformation: [
+            { width: 1600, height: 1200, crop: 'limit', quality: 'auto', fetch_format: 'auto' },
+          ],
+        },
+        (error, result) => {
+          if (error || !result) {
+            logger.error({ error: error?.message, publicId }, 'Cloudinary news image upload failed');
+            return reject(new Error('Failed to upload announcement image to Cloudinary'));
+          }
+
+          logger.info(
+            { publicId: result.public_id, secureUrl: result.secure_url, bytes: result.bytes },
+            'Successfully uploaded announcement image to Cloudinary'
+          );
+
+          resolve({
+            publicId: result.public_id,
+            secureUrl: result.secure_url,
+            format: result.format || detected.ext,
+            bytes: result.bytes,
+            width: result.width,
+            height: result.height,
+          });
+        }
+      );
+
+      uploadStream.end(file.buffer);
+    });
+  }
+
+  /**
+   * Delete public news image from Cloudinary
+   */
+  public static async deleteNewsImage(publicIdOrUrl: string): Promise<void> {
+    const publicId = this.extractPublicIdFromUrl(publicIdOrUrl);
+    if (!publicId || publicId.startsWith('mock_')) {
+      return;
+    }
+
+    if (!this.isConfigured()) return;
+
+    try {
+      await cloudinary.uploader.destroy(publicId, {
+        resource_type: 'image',
+        type: 'upload',
+      });
+      logger.info({ publicId }, 'Cleaned up news announcement image from Cloudinary');
+    } catch (err: any) {
+      logger.warn({ publicId, error: err.message }, 'Failed to delete news image from Cloudinary');
+    }
+  }
+
+  /**
    * Extract Cloudinary publicId from a secureUrl or raw identifier
    */
   public static extractPublicIdFromUrl(urlOrId: string): string {

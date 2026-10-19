@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { AdminShell } from '../../../components/layout/AdminShell';
 import { StatCard } from '../../../components/common/StatCard';
 import { apiClient } from '../../../lib/api/client';
+import { useAuth } from '../../../context/AuthContext';
 import {
   Mail,
   Search,
@@ -58,10 +59,13 @@ interface ContactStats {
 
 const CATEGORY_LABELS: Record<string, string> = {
   GENERAL: 'General Inquiry',
+  GENERAL_INQUIRY: 'General Inquiry',
   TRAINING_PROGRAMS: 'Training Programs',
   SCHOLARSHIPS: 'Scholarship Application',
+  SCHOLARSHIP_APPLICATION: 'Scholarship Application',
   TUTORING: 'Tutoring Services',
   PARTNERSHIPS: 'Partnership & Mentorship',
+  PARTNERSHIP_MENTORSHIP: 'Partnership & Mentorship',
   DONATIONS: 'Donations & Giving',
   TECHNICAL_SUPPORT: 'Technical Support',
   OTHER: 'Other Inquiries',
@@ -90,6 +94,7 @@ const PRIORITY_CONFIG: Record<
 };
 
 export default function SuperAdminMessagesPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [messages, setMessages] = useState<ContactMessageItem[]>([]);
   const [stats, setStats] = useState<ContactStats>({
     total: 0,
@@ -122,11 +127,20 @@ export default function SuperAdminMessagesPage() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await apiClient<{ success: boolean; data: ContactStats }>(
+      const res = await apiClient<{ success: boolean; data: any }>(
         '/admin/contact-messages/stats'
       );
       if (res?.data) {
-        setStats(res.data);
+        const raw = res.data;
+        setStats({
+          total: Number(raw.total ?? raw.TOTAL ?? 0),
+          newCount: Number(raw.newCount ?? raw.NEW ?? 0),
+          inProgressCount: Number(raw.inProgressCount ?? raw.IN_PROGRESS ?? 0),
+          waitingCount: Number(raw.waitingCount ?? raw.WAITING_FOR_VISITOR ?? 0),
+          resolvedCount: Number(raw.resolvedCount ?? raw.RESOLVED ?? 0),
+          closedCount: Number(raw.closedCount ?? raw.CLOSED ?? 0),
+          spamCount: Number(raw.spamCount ?? raw.SPAM ?? 0),
+        });
       }
     } catch (err: any) {
       console.warn('Failed to load contact message stats:', err?.message);
@@ -148,7 +162,8 @@ export default function SuperAdminMessagesPage() {
       const res = await apiClient<{
         success: boolean;
         data: {
-          items: ContactMessageItem[];
+          items?: ContactMessageItem[];
+          messages?: ContactMessageItem[];
           pagination: {
             page: number;
             limit: number;
@@ -159,9 +174,10 @@ export default function SuperAdminMessagesPage() {
       }>(`/admin/contact-messages?${params.toString()}`);
 
       if (res?.data) {
-        setMessages(res.data.items || []);
-        setTotalPages(res.data.pagination.totalPages || 1);
-        setTotalCount(res.data.pagination.total || 0);
+        const msgList = res.data.items || res.data.messages || [];
+        setMessages(msgList);
+        setTotalPages(res.data.pagination?.totalPages || 1);
+        setTotalCount(res.data.pagination?.total || 0);
       }
     } catch (err: any) {
       setError(err?.message || 'Unable to retrieve messages. Please retry.');
@@ -171,12 +187,14 @@ export default function SuperAdminMessagesPage() {
   }, [page, searchQuery, statusFilter, categoryFilter]);
 
   useEffect(() => {
+    if (!user || authLoading) return;
     fetchStats();
-  }, [fetchStats]);
+  }, [user, authLoading, fetchStats]);
 
   useEffect(() => {
+    if (!user || authLoading) return;
     fetchMessages();
-  }, [fetchMessages]);
+  }, [user, authLoading, fetchMessages]);
 
   const handleOpenDetail = (msg: ContactMessageItem) => {
     setSelectedMessage(msg);
@@ -299,7 +317,7 @@ export default function SuperAdminMessagesPage() {
           <div className="col-12 col-sm-6 col-xl-2">
             <StatCard
               title="Spam / Closed"
-              value={stats.spamCount + stats.closedCount}
+              value={(stats.spamCount || 0) + (stats.closedCount || 0)}
               icon={ShieldAlert}
               variant="danger"
             />
@@ -364,11 +382,11 @@ export default function SuperAdminMessagesPage() {
                     }}
                   >
                     <option value="ALL">All Categories</option>
-                    <option value="GENERAL">General Inquiry</option>
+                    <option value="GENERAL_INQUIRY">General Inquiry</option>
                     <option value="TRAINING_PROGRAMS">Training Programs</option>
-                    <option value="SCHOLARSHIPS">Scholarship Application</option>
+                    <option value="SCHOLARSHIP_APPLICATION">Scholarship Application</option>
                     <option value="TUTORING">Tutoring Services</option>
-                    <option value="PARTNERSHIPS">Partnership & Mentorship</option>
+                    <option value="PARTNERSHIP_MENTORSHIP">Partnership & Mentorship</option>
                     <option value="DONATIONS">Donations & Giving</option>
                     <option value="TECHNICAL_SUPPORT">Technical Support</option>
                     <option value="OTHER">Other Inquiries</option>

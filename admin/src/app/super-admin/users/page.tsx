@@ -5,6 +5,7 @@ import { AdminShell } from '../../../components/layout/AdminShell';
 import { DataTable, Column } from '../../../components/common/DataTable';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { apiClient } from '../../../lib/api/client';
+import { useAuth } from '../../../context/AuthContext';
 import {
   Users,
   UserPlus,
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminUsersPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -44,8 +46,9 @@ export default function AdminUsersPage() {
   };
 
   useEffect(() => {
+    if (!user || authLoading) return;
     fetchUsers();
-  }, []);
+  }, [user, authLoading]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();

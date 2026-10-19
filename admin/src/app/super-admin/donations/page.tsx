@@ -6,6 +6,7 @@ import { DataTable, Column } from '../../../components/common/DataTable';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { StatCard } from '../../../components/common/StatCard';
 import { apiClient } from '../../../lib/api/client';
+import { useAuth } from '../../../context/AuthContext';
 import {
   DollarSign,
   HeartHandshake,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 
 export default function DonationsPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [donations, setDonations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [tabFilter, setTabFilter] = useState<'ALL' | 'REAL' | 'DEMO'>('ALL');
@@ -34,8 +36,9 @@ export default function DonationsPage() {
   };
 
   useEffect(() => {
+    if (!user || authLoading) return;
     fetchDonations();
-  }, []);
+  }, [user, authLoading]);
 
   // Compute separated metrics
   const realTransactions = donations.filter((d) => !d.isDemo && d.status === 'COMPLETED');

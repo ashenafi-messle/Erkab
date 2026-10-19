@@ -5,6 +5,7 @@ import { AdminShell } from '../../../components/layout/AdminShell';
 import { DataTable, Column } from '../../../components/common/DataTable';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { apiClient } from '../../../lib/api/client';
+import { useAuth } from '../../../context/AuthContext';
 import {
   FileText,
   Download,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react';
 
 export default function ReportsAndAuditsPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,8 +34,9 @@ export default function ReportsAndAuditsPage() {
   };
 
   useEffect(() => {
+    if (!user || authLoading) return;
     fetchLogs();
-  }, []);
+  }, [user, authLoading]);
 
   const handleExportCSV = () => {
     if (!logs.length) return;

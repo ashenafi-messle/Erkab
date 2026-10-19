@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { AdminUser, AdminRole } from '../lib/types/auth';
-import { apiClient, setAuthToken, ApiError } from '../lib/api/client';
+import { apiClient, setAuthToken, getAuthToken, ApiError } from '../lib/api/client';
 
 interface AuthContextType {
   user: AdminUser | null;
@@ -30,10 +30,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const router = useRouter();
   const pathname = usePathname();
 
+  const initialCheckRef = useRef(false);
+
   const refreshUser = useCallback(async (): Promise<AdminUser | null> => {
     // If a request is already in flight, reuse the promise to prevent duplicate network calls
     if (inFlightSessionPromise) {
       return inFlightSessionPromise;
+    }
+
+    // If on login page and no stored token, immediately resolve unauthenticated state without network error
+    const existingToken = getAuthToken();
+    if (!existingToken && pathname === '/login') {
+      setUser(null);
+      setIsLoading(false);
+      setConnectionError(null);
+      return null;
     }
 
     inFlightSessionPromise = (async () => {
@@ -79,10 +90,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     })();
 
     return inFlightSessionPromise;
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
-    // Perform session verification asynchronously in the background
+    // Avoid double initialization in React StrictMode
+    if (initialCheckRef.current) return;
+    initialCheckRef.current = true;
     refreshUser();
   }, [refreshUser]);
 

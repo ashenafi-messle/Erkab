@@ -1,5 +1,13 @@
 import { API_ENDPOINTS } from '@/lib/api/endpoints';
 
+export interface AnnouncementImage {
+  id?: string;
+  imageUrl: string;
+  cloudinaryPublicId?: string | null;
+  caption?: string | null;
+  displayOrder?: number;
+}
+
 export interface Announcement {
   id: string;
   slug: string;
@@ -9,6 +17,7 @@ export interface Announcement {
   summary: string;
   content: string;
   coverImageUrl?: string | null;
+  images?: AnnouncementImage[];
   isImportant?: boolean;
 }
 
@@ -35,6 +44,34 @@ const FALLBACK_ARTICLES: Announcement[] = [
   },
 ];
 
+function mapRawArticle(item: any): Announcement {
+  const rawImages = Array.isArray(item.images) ? item.images : [];
+  const images: AnnouncementImage[] = rawImages.length > 0
+    ? rawImages.map((img: any, idx: number) => ({
+        id: img.id || String(idx),
+        imageUrl: img.imageUrl,
+        caption: img.caption || null,
+        displayOrder: typeof img.displayOrder === 'number' ? img.displayOrder : idx,
+      }))
+    : (item.coverImageUrl ? [{ id: 'cover', imageUrl: item.coverImageUrl, displayOrder: 0 }] : []);
+
+  const coverImageUrl = images.length > 0 ? images[0].imageUrl : (item.coverImageUrl || null);
+
+  return {
+    id: item.id,
+    slug: item.slug,
+    title: item.title,
+    date: item.publishedAt
+      ? new Date(item.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+      : 'Recent',
+    category: item.category || 'General',
+    summary: item.excerpt || item.summary || '',
+    content: item.content || '',
+    coverImageUrl,
+    images,
+  };
+}
+
 export async function getAnnouncements(): Promise<Announcement[]> {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   try {
@@ -45,17 +82,14 @@ export async function getAnnouncements(): Promise<Announcement[]> {
       return FALLBACK_ARTICLES;
     }
     const json = await res.json();
-    if (json.success && Array.isArray(json.data?.articles)) {
-      return json.data.articles.map((item: any) => ({
-        id: item.id,
-        slug: item.slug,
-        title: item.title,
-        date: item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Recent',
-        category: item.category || 'General',
-        summary: item.excerpt || '',
-        content: item.content || '',
-        coverImageUrl: item.coverImageUrl || null,
-      }));
+    const rawList = Array.isArray(json.data)
+      ? json.data
+      : (Array.isArray(json.data?.articles)
+          ? json.data.articles
+          : (Array.isArray(json.articles) ? json.articles : []));
+
+    if (rawList.length > 0) {
+      return rawList.map(mapRawArticle);
     }
     return FALLBACK_ARTICLES;
   } catch (err) {
@@ -76,17 +110,7 @@ export async function getAnnouncementBySlug(slug: string): Promise<Announcement 
     }
     const json = await res.json();
     if (json.success && json.data) {
-      const item = json.data;
-      return {
-        id: item.id,
-        slug: item.slug,
-        title: item.title,
-        date: item.publishedAt ? new Date(item.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Recent',
-        category: item.category || 'General',
-        summary: item.excerpt || '',
-        content: item.content || '',
-        coverImageUrl: item.coverImageUrl || null,
-      };
+      return mapRawArticle(json.data);
     }
     return null;
   } catch (err) {

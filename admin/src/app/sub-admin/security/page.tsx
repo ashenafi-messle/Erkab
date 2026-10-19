@@ -5,6 +5,7 @@ import { AdminShell } from '../../../components/layout/AdminShell';
 import { DataTable, Column } from '../../../components/common/DataTable';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { apiClient } from '../../../lib/api/client';
+import { useAuth } from '../../../context/AuthContext';
 import {
   ShieldAlert,
   ShieldCheck,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 
 export default function SecurityAuditPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<'security' | 'audit'>('security');
   const [events, setEvents] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -38,8 +40,9 @@ export default function SecurityAuditPage() {
   };
 
   useEffect(() => {
+    if (!user || authLoading) return;
     fetchSecurityData();
-  }, []);
+  }, [user, authLoading]);
 
   const securityColumns: Column<any>[] = [
     {

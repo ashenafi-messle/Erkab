@@ -17,6 +17,7 @@ export function NewsContent({ initialAnnouncements }: NewsContentProps) {
   const { locale, t } = useLanguage();
   const isAm = locale === 'am';
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [failedCovers, setFailedCovers] = useState<Record<string, boolean>>({});
 
   const localizedItems = initialAnnouncements.map((a) => getLocalizedAnnouncement(a, locale));
 
@@ -66,7 +67,7 @@ export function NewsContent({ initialAnnouncements }: NewsContentProps) {
               {filteredAnnouncements.map((item) => (
                 <div key={item.id} className="col-12 col-md-6 col-lg-4">
                   <div className="bg-white rounded-4 border border-light-subtle shadow-sm h-100 d-flex flex-column overflow-hidden transition-all hover-shadow">
-                    {item.coverImageUrl && (
+                    {item.coverImageUrl && !failedCovers[item.id] && (
                       <div className="position-relative w-100" style={{ height: '180px', backgroundColor: '#071927' }}>
                         <Image
                           src={item.coverImageUrl}
@@ -74,7 +75,16 @@ export function NewsContent({ initialAnnouncements }: NewsContentProps) {
                           fill
                           sizes="(max-width: 768px) 100vw, 33vw"
                           style={{ objectFit: 'cover' }}
+                          onError={() => setFailedCovers((prev) => ({ ...prev, [item.id]: true }))}
                         />
+                        {item.images && item.images.length > 1 && (
+                          <span
+                            className="position-absolute bottom-0 end-0 m-2 px-2 py-1 rounded-pill bg-dark bg-opacity-75 text-white small fw-medium font-monospace"
+                            style={{ fontSize: '0.72rem' }}
+                          >
+                            📷 {item.images.length} {isAm ? 'ፎቶዎች' : 'photos'}
+                          </span>
+                        )}
                       </div>
                     )}
 

@@ -5,6 +5,7 @@ import { generateReferenceNumber } from '../../core/utils/referenceNumber';
 import { ValidationError, NotFoundError } from '../../core/errors/AppError';
 import { logger } from '../../core/logging/logger';
 import { ProgramsService } from './programs.service';
+import { validateReceiptUrlSafe } from '../validation/applicationSchemas';
 
 export interface StudentSubmissionDTO {
   fullName: string;
@@ -39,6 +40,7 @@ export interface TutorSubmissionDTO {
   qualifications?: string;
   experience?: string;
   hourlyRate?: string;
+  receiptUrl?: string;
 }
 
 export interface SubmissionResponse {
@@ -376,9 +378,25 @@ export class ApplicationsService {
 
     const applicationId = crypto.randomUUID();
     const referenceNumber = generateReferenceNumber('TUT');
-    // If it's a student requesting tutoring (no resume submitted), require demo payment
+    // If it's a student requesting tutoring (no resume submitted), require payment
     const isStudentRequest = !files?.resumeFile || Boolean(data.studentName);
-    const initialStatus = isStudentRequest ? 'PENDING_PAYMENT' : 'PENDING';
+
+    let validatedReceiptUrl: string | null = null;
+    if (data.receiptUrl) {
+      const res = validateReceiptUrlSafe(data.receiptUrl);
+      if (!res.valid) {
+        throw new ValidationError(res.error);
+      }
+      validatedReceiptUrl = data.receiptUrl.trim();
+    }
+
+    const initialStatus = isStudentRequest
+      ? validatedReceiptUrl
+        ? 'PENDING_VERIFICATION'
+        : 'PENDING_PAYMENT'
+      : 'PENDING';
+
+    const paymentStatus = validatedReceiptUrl ? 'PENDING_VERIFICATION' : 'PENDING';
 
     let paymentReference: string | undefined;
     let paymentAmount: number | undefined;
@@ -438,26 +456,29 @@ export class ApplicationsService {
 
         if (isStudentRequest && paymentReference && paymentAmount) {
           const paymentId = crypto.randomUUID();
+          const submittedAt = validatedReceiptUrl ? new Date().toISOString() : null;
           await client.query(
             `INSERT INTO "public"."TutoringPayment" (
               "id", "paymentReference", "tutorApplicationId", "amount", "currency",
-              "status", "paymentMode", "createdAt", "updatedAt"
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())`,
+              "status", "paymentMode", "receiptUrl", "receiptSubmittedAt", "createdAt", "updatedAt"
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())`,
             [
               paymentId,
               paymentReference,
               applicationId,
               paymentAmount,
               'ETB',
-              'PENDING',
+              paymentStatus,
               'DEMO',
+              validatedReceiptUrl,
+              submittedAt,
             ]
           );
         }
       });
 
       logger.info(
-        { referenceNumber, applicationId, paymentReference, isStudentRequest },
+        { referenceNumber, applicationId, paymentReference, isStudentRequest, hasReceipt: Boolean(validatedReceiptUrl) },
         'Tutor application / request successfully created'
       );
 
@@ -469,7 +490,9 @@ export class ApplicationsService {
           paymentUrl: `/tutoring/payment/${paymentReference}`,
           amount: paymentAmount,
           currency: 'ETB',
-          message: 'Tutoring request submitted. Please complete the demo payment to confirm your registration.',
+          message: validatedReceiptUrl
+            ? 'Request received — payment verification pending.'
+            : 'Tutoring request submitted. Please complete direct bank transfer to confirm registration.',
         };
       }
 
@@ -493,7 +516,8 @@ export class ApplicationsService {
     const row = await queryOne(
       `SELECT 
         p."id", p."paymentReference", p."amount", p."currency", p."status", p."paymentMode", 
-        p."transactionId", p."createdAt", p."updatedAt",
+        p."transactionId", p."receiptUrl", p."receiptSubmittedAt", p."verifiedBy", p."verifiedByName", p."verifiedAt", p."rejectionReason",
+        p."createdAt", p."updatedAt",
         t."id" AS "tutoringId", t."referenceNumber" AS "tutoringReference",
         t."studentOrApplicantName" AS "studentName", t."gradeLevel", t."subjects",
         t."deliveryPreference", t."status" AS "tutoringStatus"
@@ -515,6 +539,12 @@ export class ApplicationsService {
       status: row.status,
       paymentMode: row.paymentMode,
       transactionId: row.transactionId,
+      receiptUrl: row.receiptUrl,
+      receiptSubmittedAt: row.receiptSubmittedAt,
+      verifiedBy: row.verifiedBy,
+      verifiedByName: row.verifiedByName,
+      verifiedAt: row.verifiedAt,
+      rejectionReason: row.rejectionReason,
       tutoringReference: row.tutoringReference,
       studentName: row.studentName,
       gradeLevel: row.gradeLevel,
@@ -522,6 +552,90 @@ export class ApplicationsService {
       deliveryPreference: row.deliveryPreference,
       tutoringStatus: row.tutoringStatus,
       createdAt: row.createdAt,
+    };
+  }
+
+  public static async submitTutoringReceipt(paymentReference: string, receiptUrl: string) {
+    const validation = validateReceiptUrlSafe(receiptUrl);
+    if (!validation.valid) {
+      throw new ValidationError(validation.error);
+    }
+
+    const payment = await this.getTutoringPaymentByReference(paymentReference);
+
+    // If already verified, return idempotent response
+    if (payment.status === 'VERIFIED' || payment.status === 'SUCCEEDED') {
+      return {
+        success: true,
+        alreadyVerified: true,
+        status: payment.status,
+        paymentReference: payment.paymentReference,
+        tutoringReference: payment.tutoringReference,
+        message: 'Payment has already been verified by admissions review.',
+      };
+    }
+
+    // Duplicate detection across other applications (flag for review)
+    const duplicatePayment = await queryOne<{ paymentReference: string; tutorApplicationId: string }>(
+      `SELECT "paymentReference", "tutorApplicationId" 
+       FROM "public"."TutoringPayment" 
+       WHERE "receiptUrl" = $1 AND "paymentReference" != $2
+       LIMIT 1`,
+      [receiptUrl.trim(), paymentReference]
+    );
+
+    if (duplicatePayment) {
+      logger.warn(
+        {
+          currentPayment: paymentReference,
+          existingPayment: duplicatePayment.paymentReference,
+        },
+        'Duplicate receipt URL detected across tutoring applications; flagged for review'
+      );
+    }
+
+    const submittedUrl = receiptUrl.trim();
+
+    await transaction(async (client) => {
+      await client.query(
+        `UPDATE "public"."TutoringPayment"
+         SET "receiptUrl" = $1,
+             "receiptSubmittedAt" = NOW(),
+             "status" = 'PENDING_VERIFICATION',
+             "rejectionReason" = NULL,
+             "updatedAt" = NOW()
+         WHERE "paymentReference" = $2`,
+        [submittedUrl, paymentReference]
+      );
+
+      await client.query(
+        `UPDATE "public"."TutorApplication"
+         SET "status" = 'PENDING_VERIFICATION',
+             "updatedAt" = NOW()
+         WHERE "referenceNumber" = $1`,
+        [payment.tutoringReference]
+      );
+    });
+
+    logger.info(
+      {
+        paymentReference,
+        tutoringReference: payment.tutoringReference,
+        hasDuplicateFlag: Boolean(duplicatePayment),
+      },
+      'Tutoring payment receipt submitted successfully; status set to PENDING_VERIFICATION'
+    );
+
+    return {
+      success: true,
+      status: 'PENDING_VERIFICATION',
+      paymentStatus: 'PENDING_VERIFICATION',
+      tutoringStatus: 'PENDING_VERIFICATION',
+      paymentReference,
+      tutoringReference: payment.tutoringReference,
+      receiptUrl: submittedUrl,
+      receiptSubmittedAt: new Date().toISOString(),
+      message: 'Request received — payment verification pending.',
     };
   }
 

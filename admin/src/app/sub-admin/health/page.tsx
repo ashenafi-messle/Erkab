@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AdminShell } from '../../../components/layout/AdminShell';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { apiClient } from '../../../lib/api/client';
+import { useAuth } from '../../../context/AuthContext';
 import {
   Activity,
   Server,
@@ -36,6 +37,7 @@ interface SystemHealthReport {
 }
 
 export default function SystemHealthPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [report, setReport] = useState<SystemHealthReport | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -54,8 +56,9 @@ export default function SystemHealthPage() {
   };
 
   useEffect(() => {
+    if (!user || authLoading) return;
     fetchHealth();
-  }, []);
+  }, [user, authLoading]);
 
   const getComponentIcon = (name: string) => {
     const lower = name.toLowerCase();

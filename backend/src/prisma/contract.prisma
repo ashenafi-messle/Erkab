@@ -88,6 +88,12 @@ model TutoringPayment {
   status             String            @default("PENDING")
   paymentMode        String            @default("DEMO")
   transactionId      String?           @unique
+  receiptUrl         String?
+  receiptSubmittedAt TimestamptzString?
+  verifiedBy         String?
+  verifiedByName     String?
+  verifiedAt         TimestamptzString?
+  rejectionReason    String?
   createdAt          TimestamptzString @default(now())
   updatedAt          temporal.updatedAtString()
 }
@@ -204,19 +210,31 @@ model DonationPayment {
 }
 
 model NewsArticle {
-  id                String            @id
-  slug              String            @unique
+  id                String             @id
+  slug              String             @unique
   title             String
   excerpt           String
   content           String
   coverImageAssetId String?
   coverImageUrl     String?
-  category          String            @default("General")
-  status            String            @default("DRAFT")
+  category          String             @default("General")
+  status            String             @default("DRAFT")
   publishedAt       TimestamptzString?
   authorName        String?
-  createdAt         TimestamptzString @default(now())
+  images            NewsArticleImage[]
+  createdAt         TimestamptzString  @default(now())
   updatedAt         temporal.updatedAtString()
+}
+
+model NewsArticleImage {
+  id                 String            @id
+  articleId          String
+  article            NewsArticle       @relation(fields: [articleId], references: [id])
+  imageUrl           String
+  cloudinaryPublicId String?
+  caption            String?
+  displayOrder       Int               @default(0)
+  createdAt          TimestamptzString @default(now())
 }
 
 model AdminUser {

@@ -7,6 +7,7 @@ import { Container } from '@/components/layout/Container';
 import { PageHero } from '@/components/ui/PageHero';
 import { Announcement, getLocalizedAnnouncement } from '@/features/announcements/service';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { AnnouncementCarousel } from './AnnouncementCarousel';
 import { ArrowLeft, Calendar, Tag } from 'lucide-react';
 
 interface NewsDetailContentProps {
@@ -46,21 +47,11 @@ export function NewsDetailContent({ initialAnnouncement }: NewsDetailContentProp
               </Link>
             </div>
 
-            {announcement.coverImageUrl && (
-              <div
-                className="position-relative w-100 rounded-4 overflow-hidden mb-4 shadow-sm border border-light-subtle"
-                style={{ aspectRatio: '16 / 9', maxHeight: '420px', backgroundColor: '#071927' }}
-              >
-                <Image
-                  src={announcement.coverImageUrl}
-                  alt={announcement.title}
-                  fill
-                  priority
-                  sizes="(max-width: 1200px) 100vw, 820px"
-                  style={{ objectFit: 'cover' }}
-                />
-              </div>
-            )}
+            {/* Responsive Multi-Image Slideshow / Single Image / Text-only fallback */}
+            <AnnouncementCarousel
+              images={announcement.images}
+              title={announcement.title}
+            />
 
             <div className="fs-6 text-dark mb-4" style={{ lineHeight: '1.8', whiteSpace: 'pre-line' }}>
               {announcement.content}

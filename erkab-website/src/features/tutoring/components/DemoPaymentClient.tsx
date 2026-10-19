@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { Container } from '@/components/layout/Container';
 import {
   getTutoringPayment,
+  submitTutoringReceipt,
   TutoringPaymentDetails,
+  ReceiptSubmissionResponse,
 } from '@/features/tutoring/service';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import {
@@ -24,6 +26,9 @@ import {
   Clock,
   Layers,
   Sparkles,
+  ExternalLink,
+  CheckCircle2,
+  Send,
 } from 'lucide-react';
 
 interface DemoPaymentClientProps {
@@ -38,6 +43,14 @@ export function DemoPaymentClient({ reference: paymentReference }: DemoPaymentCl
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [initialError, setInitialError] = useState('');
   const [copied, setCopied] = useState(false);
+
+  // Receipt submission state
+  const [receiptUrl, setReceiptUrl] = useState('');
+  const [transferConfirmed, setTransferConfirmed] = useState(false);
+  const [submittingReceipt, setSubmittingReceipt] = useState(false);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
+  const [receiptSuccess, setReceiptSuccess] = useState(false);
+  const [submittedResponse, setSubmittedResponse] = useState<ReceiptSubmissionResponse | null>(null);
 
   useEffect(() => {
     if (!paymentReference) {
@@ -58,6 +71,9 @@ export function DemoPaymentClient({ reference: paymentReference }: DemoPaymentCl
         const data = await getTutoringPayment(paymentReference);
         if (isMounted) {
           setPayment(data);
+          if (data.receiptUrl) {
+            setReceiptUrl(data.receiptUrl);
+          }
         }
       } catch (err: unknown) {
         if (isMounted) {
@@ -107,9 +123,59 @@ export function DemoPaymentClient({ reference: paymentReference }: DemoPaymentCl
     }
   };
 
+  const handleSubmitReceipt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReceiptError(null);
+
+    const trimmedUrl = receiptUrl.trim();
+    if (!trimmedUrl) {
+      setReceiptError(t.tutoringPayment.errReceiptRequired);
+      return;
+    }
+
+    try {
+      const parsed = new URL(trimmedUrl);
+      if (parsed.protocol !== 'https:') {
+        setReceiptError(t.tutoringPayment.errHttpsRequired);
+        return;
+      }
+      if (parsed.username || parsed.password) {
+        setReceiptError(isAm ? 'የይለፍ ቃል ወይም ሚስጥር የያዘ URL አይፈቀድም።' : 'URLs with embedded credentials are not allowed.');
+        return;
+      }
+    } catch {
+      setReceiptError(t.tutoringPayment.errHttpsRequired);
+      return;
+    }
+
+    if (!transferConfirmed) {
+      setReceiptError(t.tutoringPayment.errConfirmationRequired);
+      return;
+    }
+
+    try {
+      setSubmittingReceipt(true);
+      const res = await submitTutoringReceipt(paymentReference, trimmedUrl);
+      setReceiptSuccess(true);
+      setSubmittedResponse(res);
+      setPayment((prev) => (prev ? { ...prev, status: 'PENDING_VERIFICATION', receiptUrl: trimmedUrl } : null));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to submit bank receipt. Please check your link and try again.';
+      setReceiptError(msg);
+    } finally {
+      setSubmittingReceipt(false);
+    }
+  };
+
   const dynamicAmount = payment?.amount ?? 500;
   const dynamicCurrency = payment?.currency ?? 'ETB';
   const formattedFee = `${dynamicAmount.toLocaleString()} ${dynamicCurrency}`;
+
+  const isPendingVerification =
+    receiptSuccess ||
+    payment?.status === 'PENDING_VERIFICATION' ||
+    payment?.status === 'VERIFIED' ||
+    payment?.status === 'SUCCEEDED';
 
   return (
     <div className="section-py section-bg-light min-vh-100 py-5">
@@ -261,8 +327,18 @@ export function DemoPaymentClient({ reference: paymentReference }: DemoPaymentCl
                           {t.tutoringPayment.summaryTitle}
                         </span>
                       </div>
-                      <span className="badge bg-warning-subtle text-warning-emphasis fw-bold">
-                        {t.tutoringPayment.statusPending}
+                      <span className={`badge ${
+                        payment.status === 'VERIFIED' || payment.status === 'SUCCEEDED'
+                          ? 'bg-success-subtle text-success border border-success'
+                          : payment.status === 'PENDING_VERIFICATION' || receiptSuccess
+                          ? 'bg-warning-subtle text-warning-emphasis border border-warning'
+                          : 'bg-secondary-subtle text-secondary'
+                      } fw-bold`}>
+                        {payment.status === 'VERIFIED' || payment.status === 'SUCCEEDED'
+                          ? t.tutoringPayment.statusVerified
+                          : payment.status === 'PENDING_VERIFICATION' || receiptSuccess
+                          ? (isAm ? 'ማረጋገጫ በመጠባበቅ ላይ' : 'Verification Pending')
+                          : t.tutoringPayment.statusPending}
                       </span>
                     </div>
 
@@ -408,6 +484,177 @@ export function DemoPaymentClient({ reference: paymentReference }: DemoPaymentCl
                     <li>{t.tutoringPayment.step3}</li>
                   </ol>
                 </div>
+
+                {/* REQUIRED FIELD: Bank Receipt / Transaction Verification Link Section */}
+                {isPendingVerification ? (
+                  <div className="card border-0 rounded-4 overflow-hidden mb-4 shadow-sm bg-white border border-success-subtle">
+                    <div className="p-4 p-md-5 text-center">
+                      <div
+                        className="d-inline-flex align-items-center justify-content-center rounded-circle p-3 mb-3"
+                        style={{ backgroundColor: '#EBFBEE', color: '#12B886' }}
+                      >
+                        <CheckCircle2 size={40} />
+                      </div>
+
+                      <div className="mb-2">
+                        <span className="badge bg-warning-subtle text-warning-emphasis border border-warning px-3 py-1 rounded-pill small">
+                          {payment?.status === 'VERIFIED' ? t.tutoringPayment.statusVerified : 'PAYMENT VERIFICATION PENDING'}
+                        </span>
+                      </div>
+
+                      <h2 className="h4 fw-bold text-dark mb-2">
+                        {t.tutoringPayment.receiptSuccessTitle}
+                      </h2>
+
+                      <p className="text-secondary small mb-4 mx-auto" style={{ maxWidth: '540px' }}>
+                        {t.tutoringPayment.receiptSuccessDesc}
+                      </p>
+
+                      <div className="p-3 bg-light rounded-3 text-start small border mb-4 mx-auto" style={{ maxWidth: '540px' }}>
+                        <div className="d-flex justify-content-between mb-1">
+                          <span className="text-muted">{t.tutoringPayment.tutoringRef}:</span>
+                          <span className="fw-bold font-monospace text-primary">{payment?.tutoringReference || paymentReference}</span>
+                        </div>
+                        <div className="d-flex justify-content-between mb-1">
+                          <span className="text-muted">Payment Reference:</span>
+                          <span className="font-monospace text-dark">{payment?.paymentReference || paymentReference}</span>
+                        </div>
+                        <div className="d-flex justify-content-between mb-1">
+                          <span className="text-muted">Amount Due:</span>
+                          <span className="fw-semibold text-dark">{formattedFee}</span>
+                        </div>
+                        <div className="d-flex justify-content-between">
+                          <span className="text-muted">Status:</span>
+                          <span className="badge bg-warning-subtle text-warning-emphasis">
+                            {payment?.status || 'PENDING_VERIFICATION'}
+                          </span>
+                        </div>
+                        {(payment?.receiptUrl || receiptUrl) && (
+                          <div className="mt-2 pt-2 border-top text-truncate">
+                            <span className="text-muted d-block small mb-1">Submitted Bank Receipt URL:</span>
+                            <a
+                              href={payment?.receiptUrl || receiptUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary text-break font-monospace small d-inline-flex align-items-center gap-1"
+                            >
+                              <span>{payment?.receiptUrl || receiptUrl}</span>
+                              <ExternalLink size={12} className="flex-shrink-0" />
+                            </a>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="d-flex justify-content-center">
+                        <Link
+                          href="/tutoring"
+                          className="btn btn-primary d-inline-flex align-items-center gap-2 px-4 py-2"
+                        >
+                          <ArrowLeft size={16} />
+                          <span>{t.tutoringPayment.backToTutoring}</span>
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="card border rounded-4 overflow-hidden mb-4 shadow-sm bg-white">
+                    <div className="card-header bg-light py-3 px-4 border-bottom">
+                      <div className="d-flex align-items-center gap-2">
+                        <Send size={18} className="text-primary" />
+                        <h3 className="h6 fw-bold text-dark mb-0">
+                          {t.tutoringPayment.receiptCardTitle}
+                        </h3>
+                      </div>
+                    </div>
+
+                    <div className="card-body p-4">
+                      {payment?.status === 'REJECTED' && (
+                        <div className="alert alert-danger py-2 px-3 small rounded-3 mb-3 d-flex align-items-center gap-2">
+                          <AlertCircle size={18} className="flex-shrink-0 text-danger" />
+                          <span>
+                            {isAm
+                              ? 'ቀደም ሲል ያስገቡት የክፍያ ደረሰኝ አልተረጋገጠም። እባክዎ ትክክለኛውን የባንክ ማስተላለፊያ ደረሰኝ ሊንክ ከታች ያስገቡ።'
+                              : 'Your previous bank transfer receipt could not be verified by our admissions team. Please submit a valid, active receipt verification URL below.'}
+                          </span>
+                        </div>
+                      )}
+
+                      {receiptError && (
+                        <div className="alert alert-danger py-2 px-3 small rounded-3 mb-3 d-flex align-items-center gap-2">
+                          <AlertCircle size={18} className="flex-shrink-0 text-danger" />
+                          <span>{receiptError}</span>
+                        </div>
+                      )}
+
+                      <form onSubmit={handleSubmitReceipt} noValidate>
+                        {/* Receipt URL input */}
+                        <div className="mb-3">
+                          <label htmlFor="receiptUrlInput" className="form-label fw-bold text-dark small mb-1">
+                            {t.tutoringPayment.receiptFieldLabel}
+                          </label>
+                          <input
+                            id="receiptUrlInput"
+                            type="url"
+                            className="form-control form-control-lg font-monospace fs-6"
+                            placeholder={t.tutoringPayment.receiptPlaceholder}
+                            value={receiptUrl}
+                            onChange={(e) => {
+                              setReceiptUrl(e.target.value);
+                              if (receiptError) setReceiptError(null);
+                            }}
+                            disabled={submittingReceipt}
+                            required
+                            autoComplete="off"
+                            style={{ borderColor: receiptError ? '#dc3545' : undefined }}
+                          />
+                          <div className="form-text text-muted small mt-1">
+                            {t.tutoringPayment.receiptHelperText}
+                          </div>
+                        </div>
+
+                        {/* Checkbox Acknowledgment */}
+                        <div className="form-check mb-4 p-3 bg-light rounded-3 border">
+                          <input
+                            id="transferConfirmCheckbox"
+                            type="checkbox"
+                            className="form-check-input ms-0 me-2"
+                            checked={transferConfirmed}
+                            onChange={(e) => setTransferConfirmed(e.target.checked)}
+                            disabled={submittingReceipt}
+                          />
+                          <label
+                            htmlFor="transferConfirmCheckbox"
+                            className="form-check-label text-dark small user-select-none"
+                            style={{ cursor: 'pointer' }}
+                          >
+                            {t.tutoringPayment.transferConfirmationCheckbox}
+                          </label>
+                        </div>
+
+                        {/* Submit button */}
+                        <div className="d-grid">
+                          <button
+                            type="submit"
+                            className="btn btn-primary btn-lg fw-bold d-inline-flex align-items-center justify-content-center gap-2 py-3 shadow-sm"
+                            disabled={submittingReceipt}
+                          >
+                            {submittingReceipt ? (
+                              <>
+                                <Loader2 size={18} className="spinner-border spinner-border-sm" />
+                                <span>{t.tutoringPayment.submittingReceiptBtn}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Check size={18} />
+                                <span>{t.tutoringPayment.submitReceiptBtn}</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
 
                 {/* Security & Safety Information */}
                 <div className="p-3 rounded-3 border border-secondary-subtle bg-white d-flex align-items-start gap-3 mb-4">

@@ -5,6 +5,7 @@ import { AdminShell } from '../../../components/layout/AdminShell';
 import { DataTable, Column } from '../../../components/common/DataTable';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { apiClient } from '../../../lib/api/client';
+import { useAuth } from '../../../context/AuthContext';
 import {
   HelpCircle,
   CheckCircle,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 
 export default function SupportQueuePage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
@@ -37,8 +39,9 @@ export default function SupportQueuePage() {
   };
 
   useEffect(() => {
+    if (!user || authLoading) return;
     fetchTickets();
-  }, []);
+  }, [user, authLoading]);
 
   const handleUpdateStatus = async (status: string) => {
     if (!selectedTicket) return;

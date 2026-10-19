@@ -166,4 +166,38 @@ export class AdminApplicationsController {
       next(err);
     }
   }
+
+  public static async recordPaymentDecision(req: Request, res: Response, next: NextFunction) {
+    try {
+      const type = (req.params.type as 'students' | 'trainers' | 'tutors') || 'tutors';
+      const id = req.params.id as string;
+      const decision = req.body.decision;
+      const rejectionReason = req.body.rejectionReason || req.body.notes;
+
+      if (type !== 'tutors') {
+        throw new ValidationError('Payment verification is currently only applicable to tutoring applications');
+      }
+
+      if (!decision) {
+        throw new ValidationError('Payment decision is required (VERIFIED or REJECTED)');
+      }
+
+      const reviewerId = req.adminUser?.id || 'admin_usr_default';
+      const reviewerName = req.adminUser?.name || 'Erkab Finance Reviewer';
+      const ipAddress = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+
+      const result = await AdminApplicationsService.recordPaymentVerificationDecision({
+        applicationId: id,
+        reviewerId,
+        reviewerName,
+        decision,
+        rejectionReason,
+        ipAddress,
+      });
+
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
 }

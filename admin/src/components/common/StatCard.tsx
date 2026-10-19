@@ -5,7 +5,7 @@ import { LucideIcon } from 'lucide-react';
 
 interface StatCardProps {
   title: string;
-  value: string | number;
+  value?: string | number | null;
   subtitle?: string;
   icon: LucideIcon;
   variant?: 'blue' | 'cyan' | 'success' | 'warning' | 'danger' | 'navy';
@@ -22,6 +22,13 @@ export const StatCard: React.FC<StatCardProps> = ({
   badgeText,
   badgePositive,
 }) => {
+  const displayValue =
+    typeof value === 'number'
+      ? Number.isNaN(value)
+        ? '0'
+        : value
+      : value ?? '0';
+
   return (
     <div className="admin-card p-3 p-md-4 h-100">
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -31,7 +38,7 @@ export const StatCard: React.FC<StatCardProps> = ({
         </div>
       </div>
       <div className="d-flex align-items-baseline gap-2 mb-1">
-        <h3 className="h2 mb-0 fw-bold text-dark">{value}</h3>
+        <h3 className="h2 mb-0 fw-bold text-dark">{displayValue}</h3>
         {badgeText && (
           <span
             className={`badge ${

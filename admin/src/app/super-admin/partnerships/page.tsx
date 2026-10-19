@@ -5,6 +5,7 @@ import { AdminShell } from '../../../components/layout/AdminShell';
 import { StatCard } from '../../../components/common/StatCard';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { apiClient, getAuthToken } from '../../../lib/api/client';
+import { useAuth } from '../../../context/AuthContext';
 import {
   Handshake,
   FileCheck,
@@ -89,6 +90,7 @@ interface PartnershipDetailData {
 }
 
 export default function PartnershipsPage() {
+  const { user, isLoading: authLoading } = useAuth();
   const [partnerships, setPartnerships] = useState<PartnershipItem[]>([]);
   const [stats, setStats] = useState<PartnershipStats>({
     total: 0,
@@ -179,12 +181,14 @@ export default function PartnershipsPage() {
   }, [page, limit, search, statusFilter]);
 
   useEffect(() => {
+    if (!user || authLoading) return;
     fetchStats();
-  }, []);
+  }, [user, authLoading]);
 
   useEffect(() => {
+    if (!user || authLoading) return;
     fetchPartnerships();
-  }, [fetchPartnerships]);
+  }, [user, authLoading, fetchPartnerships]);
 
   // Load Partnership Detail
   const handleOpenDetail = async (id: string) => {

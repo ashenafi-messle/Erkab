@@ -5,6 +5,7 @@ import { AdminShell } from '../../../components/layout/AdminShell';
 import { StatCard } from '../../../components/common/StatCard';
 import { StatusBadge } from '../../../components/common/StatusBadge';
 import { apiClient } from '../../../lib/api/client';
+import { useAuth } from '../../../context/AuthContext';
 import {
   GraduationCap,
   Users,
@@ -15,7 +16,8 @@ import {
   Clock,
   ArrowRight,
   Shield,
-  FileCheck
+  FileCheck,
+  RefreshCw
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -29,6 +31,14 @@ interface DashboardSummary {
     donations: number;
     news: number;
   };
+  overview?: {
+    students?: {
+      total?: number;
+      pending?: number;
+      approved?: number;
+      rejected?: number;
+    };
+  };
   recentStudents: any[];
   recentPartnerships: any[];
   recentDonations: any[];
@@ -36,28 +46,54 @@ interface DashboardSummary {
 }
 
 export default function SuperAdminDashboard() {
+  const { user, isLoading: authLoading } = useAuth();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchSummary() {
-      try {
-        setLoading(true);
-        const res = await apiClient<{ success: boolean; data: DashboardSummary }>(
-          '/admin/dashboard/summary'
-        );
-        if (res.data) {
-          setSummary(res.data);
-        }
-      } catch (err: any) {
-        setError(err.message || 'Failed to load organization metrics.');
-      } finally {
-        setLoading(false);
-      }
+  const fetchSummary = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await apiClient<any>('/admin/dashboard/summary');
+      const raw = res?.data || res || {};
+
+      const approvedCount = Number(
+        raw?.counts?.students ??
+        raw?.counts?.approvedStudents ??
+        raw?.overview?.students?.approved ??
+        0
+      );
+
+      const parsed: DashboardSummary = {
+        counts: {
+          students: approvedCount,
+          trainers: Number(raw?.counts?.trainers ?? raw?.overview?.trainers ?? 0),
+          tutors: Number(raw?.counts?.tutors ?? raw?.overview?.tutors ?? 0),
+          programs: Number(raw?.counts?.programs ?? raw?.overview?.activePrograms ?? 10),
+          partnerships: Number(raw?.counts?.partnerships ?? raw?.overview?.partnerships?.total ?? 0),
+          donations: Number(raw?.counts?.donations ?? raw?.overview?.donations?.totalCount ?? 0),
+          news: Number(raw?.counts?.news ?? raw?.overview?.publishedNews ?? 0),
+        },
+        overview: raw?.overview,
+        recentStudents: raw?.recentActivity?.students || raw?.recentStudents || [],
+        recentPartnerships: raw?.recentActivity?.partnerships || raw?.recentPartnerships || [],
+        recentDonations: raw?.recentActivity?.donations || raw?.recentDonations || [],
+        recentAuditLogs: raw?.recentAuditLogs || [],
+      };
+
+      setSummary(parsed);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load organization metrics.');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    if (!user || authLoading) return;
     fetchSummary();
-  }, []);
+  }, [user, authLoading]);
 
   return (
     <AdminShell requiredRole="SUPER_ADMIN">
@@ -69,6 +105,16 @@ export default function SuperAdminDashboard() {
           </p>
         </div>
         <div className="d-flex align-items-center gap-2">
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+            onClick={fetchSummary}
+            disabled={loading}
+            title="Refresh dashboard metrics"
+          >
+            <RefreshCw size={14} className={loading ? 'spin' : ''} />
+            <span>Refresh</span>
+          </button>
           <Link href="/super-admin/applications" className="btn btn-sm btn-primary d-inline-flex align-items-center gap-2">
             <GraduationCap size={16} />
             <span>Review Applications</span>
@@ -81,8 +127,15 @@ export default function SuperAdminDashboard() {
       </div>
 
       {error && (
-        <div className="alert alert-warning py-2 px-3 small rounded-3 mb-4">
-          {error}
+        <div className="alert alert-warning py-2 px-3 small rounded-3 mb-4 d-flex align-items-center justify-content-between">
+          <span>{error}</span>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-dark ms-3"
+            onClick={fetchSummary}
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -91,11 +144,11 @@ export default function SuperAdminDashboard() {
         <div className="col-12 col-sm-6 col-xl-3">
           <StatCard
             title="Total Students"
-            value={loading ? '...' : summary?.counts.students ?? 0}
-            subtitle="Registered applications"
+            value={loading ? '...' : (summary?.counts?.students ?? 0)}
+            subtitle="Approved student applicants"
             icon={GraduationCap}
             variant="blue"
-            badgeText="Enrolled"
+            badgeText="Approved"
             badgePositive
           />
         </div>

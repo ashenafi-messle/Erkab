@@ -5,12 +5,18 @@ export class AdminDashboardService {
    * Super Admin organization-wide metrics & recent activity
    */
   public static async getSummary() {
-    // 1. Student Applications Metrics
-    const studentStats = await queryOne<{ total: number | string; pending: number | string; approved: number | string }>(
+    // 1. Student Applications Metrics - Strictly count APPROVED student applications
+    const approvedStudentsResult = await queryOne<{ count: number | string }>(
+      `SELECT COUNT(*) as count FROM "public"."StudentApplication" WHERE "status" = 'APPROVED'`
+    );
+    const approvedStudentsCount = Number(approvedStudentsResult?.count || 0);
+
+    const studentStats = await queryOne<{ total: number | string; pending: number | string; approved: number | string; rejected: number | string }>(
       `SELECT 
         COUNT(*) as total,
         COUNT(CASE WHEN "status" = 'PENDING' THEN 1 END) as pending,
-        COUNT(CASE WHEN "status" = 'APPROVED' THEN 1 END) as approved
+        COUNT(CASE WHEN "status" = 'APPROVED' THEN 1 END) as approved,
+        COUNT(CASE WHEN "status" = 'REJECTED' THEN 1 END) as rejected
        FROM "public"."StudentApplication"`
     );
 
@@ -67,12 +73,28 @@ export class AdminDashboardService {
        ORDER BY "createdAt" DESC LIMIT 5`
     );
 
+    const counts = {
+      students: approvedStudentsCount, // Strictly approved student applicants only
+      approvedStudents: approvedStudentsCount,
+      totalStudentApplications: Number(studentStats?.total || 0),
+      pendingStudentApplications: Number(studentStats?.pending || 0),
+      rejectedStudentApplications: Number(studentStats?.rejected || 0),
+      trainers: Number(trainerCount?.count || 0),
+      tutors: Number(tutorCount?.count || 0),
+      programs: Number(progCount?.count || 0),
+      partnerships: Number(partnershipStats?.total || 0),
+      donations: Number(donationStats?.totalCount || 0),
+      news: Number(newsCount?.count || 0),
+    };
+
     return {
+      counts,
       overview: {
         students: {
           total: Number(studentStats?.total || 0),
           pending: Number(studentStats?.pending || 0),
-          approved: Number(studentStats?.approved || 0),
+          approved: approvedStudentsCount,
+          rejected: Number(studentStats?.rejected || 0),
         },
         trainers: Number(trainerCount?.count || 0),
         tutors: Number(tutorCount?.count || 0),

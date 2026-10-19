@@ -12,6 +12,7 @@ export const API_ENDPOINTS = {
   TUTORING: {
     REQUEST: '/api/v1/web/tutoring/requests',
     PAYMENT: (reference: string) => `/api/v1/web/tutoring/payments/${reference}`,
+    RECEIPT: (reference: string) => `/api/v1/web/tutoring/payments/${reference}/receipt`,
   },
   PARTNERSHIPS: {
     SUBMIT: '/api/v1/web/partnerships',

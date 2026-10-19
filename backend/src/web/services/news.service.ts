@@ -2,6 +2,15 @@ import crypto from 'crypto';
 import { query, queryOne } from '../../core/database/db';
 import { NotFoundError, ValidationError, ConflictError } from '../../core/errors/AppError';
 import { logger } from '../../core/logging/logger';
+import { CloudinaryService } from '../../core/services/cloudinary.service';
+
+export interface ArticleImageDTO {
+  id?: string;
+  imageUrl: string;
+  cloudinaryPublicId?: string | null;
+  caption?: string | null;
+  displayOrder?: number;
+}
 
 export interface CreateArticleDTO {
   title: string;
@@ -10,10 +19,11 @@ export interface CreateArticleDTO {
   content: string;
   category?: string;
   status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
-  coverImageAssetId?: string;
-  coverImageUrl?: string;
-  authorName?: string;
-  publishedAt?: string;
+  coverImageAssetId?: string | null;
+  coverImageUrl?: string | null;
+  authorName?: string | null;
+  publishedAt?: string | null;
+  images?: ArticleImageDTO[];
 }
 
 export function slugify(text: string): string {
@@ -27,6 +37,53 @@ export function slugify(text: string): string {
 }
 
 export class NewsService {
+  public static async getImagesForArticle(articleId: string): Promise<ArticleImageDTO[]> {
+    try {
+      const rows = await query<any>(
+        `SELECT "id", "articleId", "imageUrl", "cloudinaryPublicId", "caption", "displayOrder"
+         FROM "public"."NewsArticleImage"
+         WHERE "articleId" = $1
+         ORDER BY "displayOrder" ASC, "createdAt" ASC`,
+        [articleId]
+      );
+      return rows.map((r: any) => ({
+        id: r.id,
+        imageUrl: r.imageUrl,
+        cloudinaryPublicId: r.cloudinaryPublicId || null,
+        caption: r.caption || null,
+        displayOrder: Number(r.displayOrder || 0),
+      }));
+    } catch (err: any) {
+      logger.warn({ articleId, error: err.message }, 'Failed to fetch article images');
+      return [];
+    }
+  }
+
+  public static async attachImagesToArticles(articles: any[]): Promise<any[]> {
+    if (!articles || articles.length === 0) return [];
+
+    return Promise.all(
+      articles.map(async (art) => {
+        let images = await NewsService.getImagesForArticle(art.id);
+        if (images.length === 0 && art.coverImageUrl) {
+          images = [
+            {
+              id: 'legacy-cover',
+              imageUrl: art.coverImageUrl,
+              cloudinaryPublicId: art.coverImageAssetId || null,
+              displayOrder: 0,
+            },
+          ];
+        }
+        return {
+          ...art,
+          images,
+          coverImageUrl: images.length > 0 ? images[0].imageUrl : (art.coverImageUrl || null),
+        };
+      })
+    );
+  }
+
   public static async getPublishedArticles(page = 1, limit = 10, category?: string) {
     const offset = (page - 1) * limit;
     let sql = `SELECT "id", "slug", "title", "excerpt", "category", "coverImageUrl", "publishedAt", "createdAt"
@@ -53,12 +110,14 @@ export class NewsService {
     const countRes = await queryOne<{ total: string }>(countSql, countParams);
     const total = parseInt(countRes?.total || '0', 10);
 
+    const data = await NewsService.attachImagesToArticles(rows);
+
     return {
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
-      data: rows,
+      data,
     };
   }
 
@@ -75,12 +134,60 @@ export class NewsService {
       throw new NotFoundError(`News article '${slug}' not found or is not currently published`);
     }
 
-    return article;
+    let images = await NewsService.getImagesForArticle(article.id);
+    if (images.length === 0 && article.coverImageUrl) {
+      images = [
+        {
+          id: 'legacy-cover',
+          imageUrl: article.coverImageUrl,
+          cloudinaryPublicId: article.coverImageAssetId || null,
+          displayOrder: 0,
+        },
+      ];
+    }
+
+    return {
+      ...article,
+      images,
+      coverImageUrl: images.length > 0 ? images[0].imageUrl : (article.coverImageUrl || null),
+    };
+  }
+
+  public static async getArticleById(id: string) {
+    const article = await queryOne(
+      `SELECT "id", "slug", "title", "excerpt", "content", "category", "status", "coverImageUrl", "publishedAt", "authorName", "createdAt", "updatedAt"
+       FROM "public"."NewsArticle"
+       WHERE "id" = $1 OR "slug" = $1
+       LIMIT 1`,
+      [id]
+    );
+
+    if (!article) {
+      throw new NotFoundError(`News article '${id}' not found`);
+    }
+
+    let images = await NewsService.getImagesForArticle(article.id);
+    if (images.length === 0 && article.coverImageUrl) {
+      images = [
+        {
+          id: 'legacy-cover',
+          imageUrl: article.coverImageUrl,
+          cloudinaryPublicId: article.coverImageAssetId || null,
+          displayOrder: 0,
+        },
+      ];
+    }
+
+    return {
+      ...article,
+      images,
+      coverImageUrl: images.length > 0 ? images[0].imageUrl : (article.coverImageUrl || null),
+    };
   }
 
   public static async listAllArticles(page = 1, limit = 20, status?: string) {
     const offset = (page - 1) * limit;
-    let sql = `SELECT "id", "slug", "title", "excerpt", "category", "status", "coverImageUrl", "publishedAt", "authorName", "createdAt", "updatedAt"
+    let sql = `SELECT "id", "slug", "title", "excerpt", "content", "category", "status", "coverImageUrl", "publishedAt", "authorName", "createdAt", "updatedAt"
                FROM "public"."NewsArticle"`;
     const params: any[] = [];
 
@@ -103,12 +210,14 @@ export class NewsService {
     const countRes = await queryOne<{ total: string }>(countSql, countParams);
     const total = parseInt(countRes?.total || '0', 10);
 
+    const data = await NewsService.attachImagesToArticles(rows);
+
     return {
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
-      data: rows,
+      data,
     };
   }
 
@@ -129,7 +238,14 @@ export class NewsService {
 
     const articleId = crypto.randomUUID();
     const status = data.status || 'DRAFT';
-    const publishedAt = status === 'PUBLISHED' ? (data.publishedAt || new Date().toISOString()) : (data.publishedAt || null);
+    const publishedAt =
+      status === 'PUBLISHED'
+        ? data.publishedAt || new Date().toISOString()
+        : data.publishedAt || null;
+
+    const images = Array.isArray(data.images) ? data.images : [];
+    const coverImageUrl = images.length > 0 ? images[0].imageUrl : (data.coverImageUrl || null);
+    const coverImageAssetId = images.length > 0 ? (images[0].cloudinaryPublicId || null) : (data.coverImageAssetId || null);
 
     await query(
       `INSERT INTO "public"."NewsArticle" (
@@ -145,19 +261,42 @@ export class NewsService {
         data.content,
         data.category || 'General',
         status,
-        data.coverImageAssetId || null,
-        data.coverImageUrl || null,
+        coverImageAssetId,
+        coverImageUrl,
         publishedAt,
         data.authorName || authorName,
       ]
     );
 
-    logger.info({ articleId, slug: finalSlug, status }, 'News article created');
+    // Insert associated images
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i];
+      const imgId = img.id || crypto.randomUUID();
+      const order = typeof img.displayOrder === 'number' ? img.displayOrder : i;
+      await query(
+        `INSERT INTO "public"."NewsArticleImage" (
+          "id", "articleId", "imageUrl", "cloudinaryPublicId", "caption", "displayOrder", "createdAt"
+        ) VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+        [
+          imgId,
+          articleId,
+          img.imageUrl,
+          img.cloudinaryPublicId || null,
+          img.caption || null,
+          order,
+        ]
+      );
+    }
+
+    logger.info({ articleId, slug: finalSlug, status, imageCount: images.length }, 'News article created with images');
+
+    const createdArticle = await NewsService.getArticleById(articleId);
 
     return {
       success: true,
       articleId,
       slug: finalSlug,
+      data: createdArticle,
       message: `News article '${data.title}' created successfully`,
     };
   }
@@ -188,8 +327,8 @@ export class NewsService {
     const content = data.content ?? existing.content;
     const category = data.category ?? existing.category;
     const status = data.status ?? existing.status;
-    const coverImageAssetId = data.coverImageAssetId ?? existing.coverImageAssetId;
-    const coverImageUrl = data.coverImageUrl ?? existing.coverImageUrl;
+    let coverImageAssetId = data.coverImageAssetId ?? existing.coverImageAssetId;
+    let coverImageUrl = data.coverImageUrl ?? existing.coverImageUrl;
     const authorName = data.authorName ?? existing.authorName;
 
     let publishedAt = existing.publishedAt;
@@ -197,6 +336,47 @@ export class NewsService {
       publishedAt = new Date().toISOString();
     } else if (data.publishedAt !== undefined) {
       publishedAt = data.publishedAt;
+    }
+
+    // Handle images if provided
+    if (data.images !== undefined) {
+      const currentImages = await NewsService.getImagesForArticle(existing.id);
+      const newImages = Array.isArray(data.images) ? data.images : [];
+
+      // Find images removed by the admin
+      const newImageUrls = new Set(newImages.map((img) => img.imageUrl));
+      const removedImages = currentImages.filter((oldImg) => !newImageUrls.has(oldImg.imageUrl));
+
+      for (const removed of removedImages) {
+        if (removed.cloudinaryPublicId) {
+          await CloudinaryService.deleteNewsImage(removed.cloudinaryPublicId);
+        }
+      }
+
+      // Re-populate images table with updated order
+      await query(`DELETE FROM "public"."NewsArticleImage" WHERE "articleId" = $1`, [existing.id]);
+
+      for (let i = 0; i < newImages.length; i++) {
+        const img = newImages[i];
+        const imgId = img.id || crypto.randomUUID();
+        const order = typeof img.displayOrder === 'number' ? img.displayOrder : i;
+        await query(
+          `INSERT INTO "public"."NewsArticleImage" (
+            "id", "articleId", "imageUrl", "cloudinaryPublicId", "caption", "displayOrder", "createdAt"
+          ) VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+          [
+            imgId,
+            existing.id,
+            img.imageUrl,
+            img.cloudinaryPublicId || null,
+            img.caption || null,
+            order,
+          ]
+        );
+      }
+
+      coverImageUrl = newImages.length > 0 ? newImages[0].imageUrl : null;
+      coverImageAssetId = newImages.length > 0 ? (newImages[0].cloudinaryPublicId || null) : null;
     }
 
     await query(
@@ -221,23 +401,38 @@ export class NewsService {
       ]
     );
 
+    const updatedArticle = await NewsService.getArticleById(existing.id);
+
     return {
       success: true,
       articleId: existing.id,
       slug: finalSlug,
+      data: updatedArticle,
       message: 'News article updated successfully',
     };
   }
 
   public static async deleteArticle(id: string) {
     const existing = await queryOne(
-      `SELECT "id", "title" FROM "public"."NewsArticle" WHERE "id" = $1 OR "slug" = $1`,
+      `SELECT "id", "title", "coverImageAssetId" FROM "public"."NewsArticle" WHERE "id" = $1 OR "slug" = $1`,
       [id]
     );
     if (!existing) {
       throw new NotFoundError(`News article '${id}' not found`);
     }
 
+    // Clean up all Cloudinary assets associated with this article
+    const images = await NewsService.getImagesForArticle(existing.id);
+    for (const img of images) {
+      if (img.cloudinaryPublicId) {
+        await CloudinaryService.deleteNewsImage(img.cloudinaryPublicId);
+      }
+    }
+    if (existing.coverImageAssetId) {
+      await CloudinaryService.deleteNewsImage(existing.coverImageAssetId);
+    }
+
+    await query(`DELETE FROM "public"."NewsArticleImage" WHERE "articleId" = $1`, [existing.id]);
     await query(`DELETE FROM "public"."NewsArticle" WHERE "id" = $1`, [existing.id]);
 
     return {

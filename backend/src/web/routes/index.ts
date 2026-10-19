@@ -32,6 +32,12 @@ router.get(
   ApplicationsController.getPayment
 );
 router.post(
+  '/tutoring/payments/:reference/receipt',
+  applicationSubmitLimiter,
+  upload.none(),
+  ApplicationsController.submitReceipt
+);
+router.post(
   '/tutoring/payments/:reference/confirm-demo',
   applicationSubmitLimiter,
   ApplicationsController.confirmDemoPayment

@@ -5,6 +5,7 @@ import {
   trainerApplicationSchema,
   tutorApplicationSchema,
   confirmPaymentSchema,
+  receiptSubmissionSchema,
 } from '../validation/applicationSchemas';
 
 export class ApplicationsController {
@@ -68,6 +69,17 @@ export class ApplicationsController {
       const reference = req.params.reference as string;
       const data = await ApplicationsService.getTutoringPaymentByReference(reference);
       res.status(200).json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async submitReceipt(req: Request, res: Response, next: NextFunction) {
+    try {
+      const reference = req.params.reference as string;
+      const { receiptUrl } = receiptSubmissionSchema.parse(req.body);
+      const result = await ApplicationsService.submitTutoringReceipt(reference, receiptUrl);
+      res.status(200).json(result);
     } catch (err) {
       next(err);
     }
