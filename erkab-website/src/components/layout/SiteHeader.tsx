@@ -65,16 +65,23 @@ export function SiteHeader() {
               {MAIN_NAVIGATION.map((item) => {
                 const navLabel = (t.nav as Record<string, string>)[item.key] || item.label;
                 if (item.children) {
+                  const hasActiveChild = item.children.some((sub) => pathname === sub.href);
                   return (
                     <li
                       key={item.key}
                       ref={dropdownRef}
                       className="position-relative"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') setDropdownOpen(false);
+                      }}
                     >
                       <button
-                        className="nav-link-item bg-transparent border-0 d-inline-flex align-items-center gap-1"
+                        className={`nav-link-item bg-transparent border-0 d-inline-flex align-items-center gap-1 ${
+                          hasActiveChild ? 'active' : ''
+                        }`}
                         onClick={() => setDropdownOpen(!dropdownOpen)}
                         aria-expanded={dropdownOpen}
+                        aria-haspopup="true"
                       >
                         <span>{navLabel}</span>
                         <ChevronDown size={15} />

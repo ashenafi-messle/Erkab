@@ -20,6 +20,15 @@ export function MobileNavigation({ isOpen, onClose, onOpenGetApp }: MobileNaviga
   const { locale, toggleLocale, t } = useLanguage();
   const [moreExpanded, setMoreExpanded] = React.useState(false);
 
+  React.useEffect(() => {
+    if (isOpen) {
+      const moreItem = MAIN_NAVIGATION.find((item) => item.key === 'more');
+      if (moreItem?.children?.some((sub) => pathname === sub.href)) {
+        setMoreExpanded(true);
+      }
+    }
+  }, [isOpen, pathname]);
+
   return (
     <>
       <div
@@ -103,10 +112,13 @@ export function MobileNavigation({ isOpen, onClose, onOpenGetApp }: MobileNaviga
             {MAIN_NAVIGATION.map((item) => {
               const navLabel = (t.nav as Record<string, string>)[item.key] || item.label;
               if (item.children) {
+                const hasActiveChild = item.children.some((sub) => pathname === sub.href);
                 return (
                   <li key={item.key}>
                     <button
-                      className="mobile-nav-link w-100 border-0 bg-transparent text-start"
+                      className={`mobile-nav-link w-100 border-0 bg-transparent text-start ${
+                        hasActiveChild ? 'active' : ''
+                      }`}
                       onClick={() => setMoreExpanded(!moreExpanded)}
                     >
                       <span>{navLabel}</span>

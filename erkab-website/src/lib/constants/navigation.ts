@@ -16,6 +16,7 @@ export const MAIN_NAVIGATION: NavItem[] = [
     label: 'More',
     href: '#',
     children: [
+      { key: 'management', label: 'Management', href: '/management' },
       { key: 'partnerships', label: 'Partnerships', href: '/partnerships' },
       { key: 'donations', label: 'Donations', href: '/donations' },
       { key: 'news', label: 'News & Updates', href: '/news' },
@@ -41,6 +42,7 @@ export const FOOTER_PROGRAMS: FooterLink[] = [
 
 export const FOOTER_ORGANIZATION: FooterLink[] = [
   { label: 'About Erkab', labelAm: 'ስለ እርካብ', href: '/about' },
+  { label: 'Our Management', labelAm: 'የስራ አመራር', href: '/management' },
   { label: 'How It Works', labelAm: 'የትግበራ ሂደት', href: '/#how-it-works' },
   { label: 'Tutoring Services', labelAm: 'የአጋዥ ትምህርት አገልግሎቶች', href: '/tutoring' },
   { label: 'Partner With Us', labelAm: 'አብረውን ይስሩ (አጋርነት)', href: '/partnerships' },
