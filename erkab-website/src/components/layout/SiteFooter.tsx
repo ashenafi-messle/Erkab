@@ -106,6 +106,18 @@ export function SiteFooter() {
             {t.brand.slogan} • {t.brand.supportMessage}
           </div>
         </div>
+
+        {/* Developer Credits Section */}
+        <div className="footer-credits">
+          <div className="footer-credits-primary">
+            Developed By Ardab Tech Solutions S.C
+          </div>
+          <div className="footer-credits-contributors">
+            <span className="footer-credits-item">Ambelu Endalew ( Phd Researcher )</span>
+            <span className="footer-credits-separator" aria-hidden="true">•</span>
+            <span className="footer-credits-item">Ashenafi Messle ( Software Engineer )</span>
+          </div>
+        </div>
       </Container>
     </footer>
   );
