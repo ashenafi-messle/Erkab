@@ -40,14 +40,16 @@ export const MANAGEMENT_MEMBERS: ManagementMember[] = [
     initials: 'HT',
   },
   {
-    id: 'ambelu-endakew',
-    name: 'Eng. Ambelu Endakew',
-    nameAm: 'ኢንጅነር አምበሉ እንዳከው',
+    id: 'ambelu-endalew',
+    name: 'Eng. Ambelu Endalew',
+    nameAm: 'ኢንጅነር አምበሉ እንዳለው',
     roles: [
       'Erkab Executive Director',
+      'Phd Researcher',
     ],
     rolesAm: [
       'የእርካብ ዋና ስራ አስፈፃሚ',
+      'የፒኤችዲ ተመራማሪ',
     ],
     photoUrl: 'https://res.cloudinary.com/oydsg6yc/image/upload/v1792743248/5967632259663728780.jpg',
     initials: 'AE',
@@ -77,27 +79,27 @@ export const MANAGEMENT_MEMBERS: ManagementMember[] = [
     initials: 'YA',
   },
   {
-    id: 'firehiwot',
-    name: 'Firehiwot',
-    nameAm: 'ፍሬሕይወት',
+    id: 'firehiwot-abebaw',
+    name: 'Firehiwot Abebaw',
+    nameAm: 'ፍሬሕይወት አበበው',
     roles: [
       'Erkab Property and Secretary',
     ],
     rolesAm: [
       'የእርካብ የንብረት እና ፀሐፊ',
     ],
-    initials: 'F',
+    initials: 'FA',
   },
   {
-    id: 'ayshet',
-    name: 'Ayshet',
-    nameAm: 'አይሸት',
+    id: 'ayshet-yesuf',
+    name: 'Ayshet Yesuf',
+    nameAm: 'አይሸት የሱፍ',
     roles: [
       'Accountant',
     ],
     rolesAm: [
       'አካውንታንት',
     ],
-    initials: 'A',
+    initials: 'AY',
   },
 ];
