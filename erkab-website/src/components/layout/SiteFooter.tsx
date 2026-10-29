@@ -41,7 +41,9 @@ export function SiteFooter() {
                 </div>
                 <div className="d-flex align-items-center gap-2 text-white-50">
                   <Mail size={16} className="text-info flex-shrink-0" />
-                  <span>{t.footer.emails}</span>
+                  <a href={`mailto:${t.footer.emails}`} className="text-white-50 text-decoration-none footer-link-email">
+                    {t.footer.emails}
+                  </a>
                 </div>
               </div>
             </div>

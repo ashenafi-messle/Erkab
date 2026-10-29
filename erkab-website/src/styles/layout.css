@@ -338,8 +338,9 @@
   transition: color var(--transition-fast);
 }
 
-.footer-link:hover {
-  color: var(--color-lime);
+.footer-link:hover,
+.footer-link-email:hover {
+  color: var(--color-lime) !important;
 }
 
 .footer-bottom {

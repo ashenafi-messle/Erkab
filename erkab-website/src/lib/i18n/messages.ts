@@ -637,7 +637,7 @@ export const messages = {
       rights: 'All rights reserved. Erkab Skills Training Organization.',
       readyTitle: 'Ready to transform your future?',
       location: 'Gondar, Amhara Region, Ethiopia',
-      emails: 'admissions@erkab.org / info@erkab.org',
+      emails: 'erkabskill@gmail.com',
     },
   },
   am: {
@@ -1278,7 +1278,7 @@ export const messages = {
       rights: 'መብቱ በህግ የተጠበቀ ነው። እርካብ የክህሎት ማሰልጠኛ ድርጅት።',
       readyTitle: 'የወደፊት ህይወትዎን ለመለወጥ ዝግጁ ኖት?',
       location: 'ጎንደር፣ አማራ ክልል፣ ኢትዮጵያ',
-      emails: 'admissions@erkab.org / info@erkab.org',
+      emails: 'erkabskill@gmail.com',
     },
   },
 } as const;
